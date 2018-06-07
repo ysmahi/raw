@@ -134,24 +134,10 @@
           // console.log('my chidrenene', d)
           return d.children || [d];
         })
-        .enter().append("rect")
+        .enter()
+        .append("rect")
         .attr("class", "child")
         .call(rect);
-
-      // Create circle for all children who have no children
-      console.log('a', d)
-      if (d.depth === 2) {
-        console.log('b', d)
-        g.selectAll(".child .rect")
-          .data(function (d) {
-            console.log('my chidrenene', d)
-            return d.children || [d];
-          })
-          .enter()
-          .append("circle")
-          .attr("class", "circle")
-          .appe
-      }
 
       // add title to parents
       g.append("rect")
@@ -177,6 +163,14 @@
             ;
         })
         .attr("class", "textdiv"); //textdiv class allows us to style the text easily with CSS
+
+      // Create rectangle for all children who have no children to put inside elements
+      console.log('a', d)
+      if (d.depth === 2) {
+        console.log('b', d)
+        g.append("rect")
+          .attr("class", "insideElement")
+      }
 
       function transition(d) {
         if (transitioning || !d) return;
@@ -205,12 +199,12 @@
         // Transition to the new view.
         t1.selectAll("text").call(text).style("fill-opacity", 0);
         t2.selectAll("text").call(text).style("fill-opacity", 1);
-        t1.selectAll('.circle')
-          .call(circle);
-        t2.selectAll('.circle')
-          .call(circle);
-        t1.selectAll("rect").call(rect);
-        t2.selectAll("rect").call(rect);
+        t1.selectAll("rect:not(.insideElement)").call(rect);
+        t2.selectAll("rect:not(.insideElement)").call(rect);
+        t1.selectAll('.insideElement')
+          .call(createInsideElement);
+        t2.selectAll('.insideElement')
+          .call(createInsideElement);
         /* Foreign object */
         t1.selectAll(".textdiv").style("display", "none");
         /* added */
@@ -247,11 +241,6 @@
           return y(d.y0);
         })
         .attr("width", function (d) {
-          /* console.log('d: ', d.data.name)
-          console.log('d.x1: ', d.x1)
-          console.log('x(d.x1): ', x(d.x1))
-          console.log('x(d.x0): ', x(d.x0))
-          console.log('d.x0: ', d.x0) */
           return x(d.x1) - x(d.x0);
         })
         .attr("height", function (d) {
@@ -263,22 +252,26 @@
         });
     }
 
-    function circle(cir) {
-      console.log('circle')
+    function createInsideElement(el) {
       // In each function, d is an element of the current selection
       // ie. in this code, it is the selection when 'call' is used
-      cir
-        .attr('cx', function(d) {
-          console.log('1', d.data.name)
-          console.log('2', x(d.x0) + (x(d.x1) - x(d.x0))/2)
-          console.log('3', y(d.y0) + Math.abs(y(d.y0) - y(d.y1))/2)
-          return x(d.x0) + (x(d.x1) - x(d.x0))/2;
+      el
+        .attr('x', function(d) {
+          return x(d.x0) + (x(d.x1) - x(d.x0))/3;
         })
-        .attr('cy', function(d) {
-          return y(d.y0) + Math.abs(y(d.y0) - y(d.y1))/2;
+        .attr('y', function(d) {
+          return y(d.y0) + Math.abs(y(d.y0) - y(d.y1))/3;
         })
-        .attr('r', 10)
-        .style('fill', '#000000')
+        .attr("width", function (d) {
+          return (x(d.x1) - x(d.x0))/3;
+        })
+        .attr("height", function (d) {
+          return (y(d.y1) - y(d.y0))/3;
+        })
+        .attr("fill", function (d) {
+          // return '#bbbbbb';
+          return '#FF0000'
+        });
     }
 
     function foreign(foreign) { /* added */
@@ -298,7 +291,14 @@
     }
 
     function name(d) {
+      console.log('name', d.data.name)
+      console.log('data', d)
       return d.data.name;
+    }
+
+    // Return the name of the ith inside element
+    function insideElement (d, i) {
+      return d.data.insideElements[i];
     }
 
     function breadcrumbs(d) {
