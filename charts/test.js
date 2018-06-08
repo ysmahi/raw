@@ -26,8 +26,19 @@
   var colors = chart.color()
     .title("Color scale")
 
+  // Function used each time columns are put in dimensions on RAWGraphs
   chart.draw(function (selection, data){
     data.name = 'Zoomable Tree'
+    var rawData = tree.getData()
+    var columnsDimensions = tree.nameColumnsInDimension()
+    var treeDepth = columnsDimensions.hierarchy.length
+    var insideElementNames = columnsDimensions.insideElements
+    var insideColorElementsNames = columnsDimensions.colorInsideElements
+    var colorValues = []
+
+    insideColorElementsNames.forEach(function (name) {
+      colorValues.push(rawData.map(el => el[name]));
+    })
 
     var margin = {top: 30, right: 0, bottom: 20, left: 0},
       width =  +rawWidth() -25,
@@ -71,14 +82,7 @@
       .attr("x", 6)
       .attr("y", 6 - margin.top)
   .attr("dy", ".75em");
-    /* var year = 2016;
-    var abs_in_year = function (year, values) {
-      val = values.filter(function (el) {
-        var key = parseInt(Object.keys(el));
-        return (key === year);
-      })[0][year]['abs'];
-      return val;
-    }; */
+
     var root = d3.hierarchy(data);
     console.log('data', data)
     console.log('hirearchy', root)
@@ -89,8 +93,6 @@
     display(root);
 
     function display(d) {
-      console.log('dimensions: ', tree.dimensions())
-      console.log('hier: ', tree.dimensions().hierarchy)
       // write text into grandparent
       // and activate click's handler
       grandparent
@@ -176,7 +178,7 @@
 
       // Create rectangle for all children who have no children to put inside elements
       console.log('a', d)
-      if (d.depth === 2) {
+      if (d.depth === treeDepth - 1) {
         console.log('b', d)
 
         // Make sure there is no colour difference on hover on last layer
@@ -189,7 +191,6 @@
         var selectionInsideElements = g1.selectAll("g")
           .insert('g', '.foreignObject')
           .data(function (d) {
-            console.log('oooop', d)
             return d.children
           })
           .attr('class', 'insideElements')
@@ -201,6 +202,9 @@
               // Position of each inside element and text, and its name
               return {
                 nameInsideElement: el,
+                colorInsideElement: pickHex(d.data.colorInsideElements[i],
+                  {red:0, green: 255, blue: 0},
+                  {red:255, green: 0, blue: 0}),
                 x0: d.x0 + i * (d.x1 - d.x0) / d.data.insideElements.length + 3,
                 x1: d.x0 + (i + 1) * (d.x1 - d.x0) / d.data.insideElements.length - 3,
                 y0: d.y0 + (1 / 3) * (d.y1 - d.y0),
@@ -215,7 +219,7 @@
         selectionRectInsideElements.append("rect")
           .attr("class", "rectInsideElement")
           .style("fill", function (d) {
-            return '#ff0000'
+            return d.colorInsideElement
           })
 
         selectionRectInsideElements.append("text")
@@ -251,10 +255,6 @@
         t2.selectAll("text").call(text).style("fill-opacity", 1);
         t1.selectAll("rect:not(.insideElement)").call(rect);
         t2.selectAll("rect:not(.insideElement)").call(rect);
-        /* t1.selectAll('.insideElement')
-          .call(createInsideElement);
-        t2.selectAll('.insideElement')
-          .call(createInsideElement); */
         t1.selectAll('.rectInsideElement')
           .call(rect);
         t2.selectAll('.rectInsideElement')
@@ -302,10 +302,6 @@
         .attr("height", function (d) {
           return y(d.y1) - y(d.y0);
         })
-        /* .style("fill", function (d) {
-          // return '#bbbbbb';
-          return '#3399ff'
-        }); */
     }
 
     function createInsideElement(el) {
@@ -394,5 +390,15 @@
           ? " -  Click to zoom out"
           : " - Click inside square to zoom in");
     };
+
+    // function that returns a color over a radient depending on the weight (between 0 and 1)
+    function pickHex(weight, color1, color2) {
+      var w1 = weight;
+      var w2 = 1 - w1;
+      var rgb = [Math.round(color1.red * w1 + color2.red * w2),
+        Math.round(color1.green * w1 + color2.green * w2),
+        Math.round(color1.green * w1 + color2.green * w2)];
+      return 'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')';
+    }
   })
 })();
