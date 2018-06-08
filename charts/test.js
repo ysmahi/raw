@@ -72,7 +72,7 @@
     grandparent.append("text")
       .attr("x", 6)
       .attr("y", 6 - margin.top)
-      .attr("dy", ".75em");
+  .attr("dy", ".75em");
     /* var year = 2016;
     var abs_in_year = function (year, values) {
       val = values.filter(function (el) {
@@ -168,8 +168,38 @@
       console.log('a', d)
       if (d.depth === 2) {
         console.log('b', d)
-        g.append("rect")
-          .attr("class", "insideElement")
+
+        // Create all inside Elements rectangle
+        var selectionInsideElements = g1.selectAll("g")
+          .insert('g', '.foreignObject')
+          .data(function (d) {
+            console.log('oooop', d)
+            return d.children
+          })
+          .attr('class', 'insideElements')
+
+        var selectionRectInsideElements = selectionInsideElements.selectAll('.insideElements')
+          .data(function (d) {
+            console.log('inside', d)
+            return d.data.insideElements.map((el, i) => {
+              return {
+                nameInsideElement: el,
+                x0: d.x0 + i * (d.x1 - d.x0) / d.data.insideElements.length,
+                x1: d.x0 + (i + 1) * (d.x1 - d.x0) / d.data.insideElements.length,
+                y0: d.y0 + (1 / 3) * (d.y1 - d.y0),
+                y1: d.y1,
+                x: d.x0 + i * (d.x1 - d.x0) / d.data.insideElements.length,
+                y: (d.y0 + (1 / 3) * (d.y1 - d.y0)) + (5/100) * (d.y1 - (d.y0 + (1 / 3) * (d.y1 - d.y0)))
+              }
+            })
+          })
+          .enter()
+
+        selectionRectInsideElements.append("rect")
+        .attr("class", "rectInsideElement")
+
+        selectionRectInsideElements.append("text")
+          .text(function (d) { return nameInsideElement(d)})
       }
 
       function transition(d) {
@@ -201,10 +231,14 @@
         t2.selectAll("text").call(text).style("fill-opacity", 1);
         t1.selectAll("rect:not(.insideElement)").call(rect);
         t2.selectAll("rect:not(.insideElement)").call(rect);
-        t1.selectAll('.insideElement')
+        /* t1.selectAll('.insideElement')
           .call(createInsideElement);
         t2.selectAll('.insideElement')
-          .call(createInsideElement);
+          .call(createInsideElement); */
+        t1.selectAll('.rectInsideElement')
+          .call(rect);
+        t2.selectAll('.rectInsideElement')
+          .call(rect);
         /* Foreign object */
         t1.selectAll(".textdiv").style("display", "none");
         /* added */
@@ -224,7 +258,10 @@
     }
 
     function text(text) {
+      // TODO : sans doute un problème ici sur la redéfinition des x et y
       text.attr("x", function (d) {
+        console.log('data', d)
+        console.log('data xdx', x(d.x))
         return x(d.x) + 6;
       })
         .attr("y", function (d) {
@@ -235,6 +272,14 @@
     function rect(rect) {
       rect
         .attr("x", function (d) {
+          /* console.log('coucocu', d.x0)
+          console.log(d.x1)
+          console.log(d.y0)
+          console.log(d.y1)
+          console.log(x(d.x0))
+          console.log(x(d.x1))
+          console.log(y(d.y0))
+          console.log(y(d.y1)) */
           return x(d.x0);
         })
         .attr("y", function (d) {
@@ -274,6 +319,28 @@
         });
     }
 
+    function createInsideElementRect(el) {
+      // In each function, d is an element of the current selection
+      // ie. in this code, it is the selection when 'call' is used
+      el
+        .attr('x', function(d) {
+          return x(d.x0) + (x(d.x1) - x(d.x0))/3;
+        })
+        .attr('y', function(d) {
+          return y(d.y0) + Math.abs(y(d.y0) - y(d.y1))/3;
+        })
+        .attr("width", function (d) {
+          return (x(d.x1) - x(d.x0))/3;
+        })
+        .attr("height", function (d) {
+          return (y(d.y1) - y(d.y0))/3;
+        })
+        .attr("fill", function (d) {
+          // return '#bbbbbb';
+          return '#FF0000'
+        });
+    }
+
     function foreign(foreign) { /* added */
       foreign
         .attr("x", function (d) {
@@ -291,14 +358,14 @@
     }
 
     function name(d) {
-      console.log('name', d.data.name)
-      console.log('data', d)
       return d.data.name;
     }
 
     // Return the name of the ith inside element
-    function insideElement (d, i) {
-      return d.data.insideElements[i];
+    function nameInsideElement (d) {
+      console.log('data', d)
+      console.log('name', d.nameInsideElement)
+      return d.nameInsideElement;
     }
 
     function breadcrumbs(d) {

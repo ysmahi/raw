@@ -1,14 +1,6 @@
 (function(){
 
-  var tree = raw.models.tree();
-
-  tree.dimension('insideElements')
-    .title('Inside Elements')
-    .types(String)
-
-  tree.dimension('colorInsideElements')
-    .title('Color of Inside Elements')
-    .types(Number)
+  var tree = raw.models.customTree();
 
   var chart = raw.chart()
     .title('Test')
@@ -34,16 +26,16 @@
   var colors = chart.color()
     .title("Color scale")
 
-  chart.draw(function (selection, root){
+  chart.draw(function (selection, data){
+    data.name = 'Zoomable Tree'
 
-    root.name = 'ZoomableTree';
-
-    var margin = {top: 20, right: 0, bottom: 0, left: 0},
-      width = +rawWidth(),
+    var margin = {top: 30, right: 0, bottom: 20, left: 0},
+      width =  +rawWidth() -25,
       height = +rawHeight() - margin.top - margin.bottom,
-      formatNumber = d3.format(",d"),
+      formatNumber = d3.format(",d"), // changed add d
       transitioning;
 
+    // sets x and y scale to determine size of visible boxes
     var x = d3.scaleLinear()
       .domain([0, width])
       .range([0, width]);
@@ -52,18 +44,11 @@
       .domain([0, height])
       .range([0, height]);
 
-    console.log('x', x)
-    console.log('y', y)
-
-
     var treemap = d3.treemap()
-      .tile(d3.treemapSquarify.ratio(height / width * 0.5 * (1 + Math.sqrt(5))))
-      .padding(+padding())
-      // Values are required in d3 treemap
-      // and our DB table do not have values field in it, so we are going to use 1 for all nodes.
-      // The value decides the size/area of rectangle in d3 treemap layout so effectively we are going to have
-      // even sized rectangles
-      .round(false);
+      .size([width, height])
+      .padding(0)
+      .round(false)
+    //.tile(d3.treemapSquarify);
 
     var svg = selection
       .attr("width", width + margin.left + margin.right)
@@ -72,8 +57,7 @@
       .style("margin.right", -margin.right + "px")
       .append("g")
       .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
-      .style("shape-rendering", "crispEdges")
-
+      .style("shape-rendering", "crispEdges");
 
     var grandparent = svg.append("g")
       .attr("class", "grandparent");
@@ -82,118 +66,148 @@
       .attr("y", -margin.top)
       .attr("width", width)
       .attr("height", margin.top)
-      .style("fill", function (d) { return colors()(d.color); })
-      .style("stroke","#fff")
+      //.attr("fill", '#bbbbbb');
+      .attr("fill", '#14d16c');
 
     grandparent.append("text")
       .attr("x", 6)
       .attr("y", 6 - margin.top)
       .attr("dy", ".75em");
-
-    initialize(root);
-    //throw '';
-    accumulate(root);
-    layout(root);
+    /* var year = 2016;
+    var abs_in_year = function (year, values) {
+      val = values.filter(function (el) {
+        var key = parseInt(Object.keys(el));
+        return (key === year);
+      })[0][year]['abs'];
+      return val;
+    }; */
+    var root = d3.hierarchy(data);
+    console.log('data', data)
+    console.log('hirearchy', root)
+    treemap(root
+      .sum(function(d) { return 1; })
+      .sort(function(a, b) { return a.value - b.value; })
+    );
     display(root);
 
-    function initialize(root) {
-      root.x0 = root.y1 = 0;
-      root.x1 = root.x0 + width;
-      root.y0 = root.y1 + height;
-      root.depth = 0;
-      console.log('rooot', root)
-    }
-
-    // Aggregate the values for internal nodes. This is normally done by the
-    // treemap layout, but not here because  of our custom implementation.
-    // We also take a snapshot of the original children (_children) to avoid
-    // the children being overwritten when when layout is computed.
-    function accumulate(d) {
-      return (d._children = d.children)
-        ? d.value = d.children.reduce(function(p, v) { return p + accumulate(v); }, 0)
-        : d.value;
-    }
-
-    // Compute the treemap layout recursively such that each group of siblings
-    // uses the same size (1×1) rather than the dimensions of the parent cell.
-    // This optimizes the layout for the current zoom state. Note that a wrapper
-    // object is created for the parent node for each group of siblings so that
-    // the parent’s dimensions are not discarded as we recurse. Since each group
-    // of sibling was laid out in 1×1, we must rescale to fit using absolute
-    // coordinates. This lets us use a viewport to zoom.
-    function layout(d) {
-      if (d._children) {
-        console.log('dddd', d)
-        //throw 'stop';
-        var data = d3.hierarchy({_children: d._children}, function(d, depth) { return depth ? null : d._children; })
-          .sum(function(d) { return 1; })
-          .sort(function(a, b) { return a.value - b.value; });
-
-        treemap(data);
-        d._children.forEach(function(c) {
-          // console.log(d);
-          var dx = Math.abs(d.x1 - d.x0)
-          var dy = Math.abs(d.y0 - d.y1)
-          c.x0 = d.x0 + c.x0 * dx;
-          c.y1 = d.y1 + c.y1 * dy;
-          c.x1 = c.x0 + (c.x1 - c.x0)*dx;
-          c.y0 = c.y1 + (c.y0 - c.y1)*dy;
-          c.parent = d;
-          console.log('c', c);
-          console.log('c', Math.abs(d.x1 - d.x0));
-          console.log('c', c.x1);
-          console.log('c', c.y0);
-          console.log('c', c.y1);
-          layout(c);
-        });
-      }
-    }
-
     function display(d) {
+      console.log('dimensions: ', tree.dimensions())
+      console.log('hier: ', tree.dimensions().hierarchy)
+      // write text into grandparent
+      // and activate click's handler
       grandparent
         .datum(d.parent)
         .on("click", transition)
         .select("text")
-        .text(name(d));
+        .text(breadcrumbs(d));
+
+      // grandparent color
+      grandparent
+        .datum(d.parent)
+        .select("rect")
+        .attr("fill", function () {
+          // return '#bbbbbb'
+          return '#14d16c'
+        });
 
       var g1 = svg.insert("g", ".grandparent")
         .datum(d)
         .attr("class", "depth");
 
       var g = g1.selectAll("g")
-        .data(d._children)
-        .enter().append("g");
+        .data(d.children)
+        .enter()
+        .append("g");
 
-      g.filter(function(d) { return d._children; })
-        .classed("children", true)
+      // add class and click handler to all g's with children
+      g.filter(function (d) {
+        // console.log('clicked', d)
+        return d.children;
+      })
+        .attr("class", "children")
+        .style("cursor", "pointer")
         .on("click", transition);
 
+      // Create rectangle for all children
       g.selectAll(".child")
-        .data(function(d) { return d._children || [d]; })
-        .enter().append("rect")
+        .data(function (d) {
+          // console.log('my chidrenene', d)
+          return d.children || [d];
+        })
+        .enter()
+        .append("rect")
         .attr("class", "child")
         .call(rect);
 
+      // add title to parents
       g.append("rect")
         .attr("class", "parent")
         .call(rect)
         .append("title")
-        .text(function(d) { return formatNumber(d.value); })
-        .style("fill", function (d) { return colors()(d.color); })
-        .style("stroke","#fff")
+        .text(function (d){
+          return name(d);
+        });
 
-      g.append("text")
-        .attr("y", ".75em")
-        .text(function(d) { return d.name; })
-        .call(text);
+      /* Adding a foreign object instead of a text object, allows for text wrapping */
+      g.append("foreignObject")
+        .call(rect)
+        .attr("class", "foreignobj")
+        .append("xhtml:div")
+        .attr("title", function(d) {
+          return name(d);
+        })
+        .html(function (d) {
+          return '' +
+            '<p class="title">' + name(d) + '</p>'
+            //+ '<p>' + formatNumber(d.value) + '</p>'
+            ;
+        })
+        .attr("class", "textdiv"); //textdiv class allows us to style the text easily with CSS
+
+      // Create rectangle for all children who have no children to put inside elements
+      console.log('a', d)
+      if (d.depth === 2) {
+        console.log('b', d)
+
+        // Create rectangle where the insideElements will be
+        var gIns = g.append("rect")
+          .attr("class", "insideElement")
+
+        // Create all inside Elements rectangle
+        gIns.selectAll(".insideElement")
+          .data(function (d) {
+            console.log('inside', d)
+            return d.data.insideElements.map(el => {
+              return {nameInsideElement: el,
+                x0: d.x0,
+                x1: d.x1,
+                y0: d.y0,
+                y1: d.y1}
+            });
+          })
+          .enter()
+          .append("rect")
+          .attr("class", "rectInsEl")
+
+        gIns.selectAll(".rectInsEl")
+          .append("xhtml:div")
+          .attr("title", function(d) {
+            return nameInsideElement(d);
+          })
+          .html(function (d) {
+            return '' +
+              '<p class="title">' + nameInsideElement(d) + '</p>'
+              ;
+          })
+          .attr("class","textdiv")
+      }
 
       function transition(d) {
         if (transitioning || !d) return;
         transitioning = true;
-
         var g2 = display(d),
-          t1 = g1.transition().duration(750),
-          t2 = g2.transition().duration(750);
+          t1 = g1.transition().duration(650),
+          t2 = g2.transition().duration(650);
 
         // Update the domain only after entering new elements.
         x.domain([d.x0, d.x1]);
@@ -203,47 +217,162 @@
         svg.style("shape-rendering", null);
 
         // Draw child nodes on top of parent nodes.
-        svg.selectAll(".depth").sort(function(a, b) { return a.depth - b.depth; });
+        svg.selectAll(".depth").sort(function (a, b) {
+          return a.depth - b.dep  th;
+        });
 
         // Fade-in entering text.
         g2.selectAll("text").style("fill-opacity", 0);
+        g2.selectAll("foreignObject div").style("display", "none");
 
+        /*added*/
         // Transition to the new view.
         t1.selectAll("text").call(text).style("fill-opacity", 0);
         t2.selectAll("text").call(text).style("fill-opacity", 1);
-        t1.selectAll("rect").call(rect);
-        t2.selectAll("rect").call(rect);
-
+        t1.selectAll("rect:not(.insideElement)").call(rect);
+        t2.selectAll("rect:not(.insideElement)").call(rect);
+        t1.selectAll('.insideElement')
+          .call(createInsideElement);
+        t2.selectAll('.insideElement')
+          .call(createInsideElement);
+        t1.selectAll('.rectInsEl')
+          .call(createInsideElementRect);
+        t2.selectAll('.rectInsEl')
+          .call(createInsideElementRect);
+        /* Foreign object */
+        t1.selectAll(".textdiv").style("display", "none");
+        /* added */
+        t1.selectAll(".foreignobj").call(foreign);
+        /* added */
+        t2.selectAll(".textdiv").style("display", "block");
+        /* added */
+        t2.selectAll(".foreignobj").call(foreign);
+        /* added */
         // Remove the old node when the transition is finished.
-        t1.remove().each("end", function() {
-          svg.style("shape-rendering", "crispEdges");
+        t1.on("end.remove", function(){
+          this.remove();
           transitioning = false;
         });
       }
-
       return g;
     }
 
     function text(text) {
-      text.attr("x", function(d) { return x(d.x0) + 6; })
-        .attr("y", function(d) { return y(d.y1) + 6; });
+      text.attr("x", function (d) {
+        return x(d.x) + 6;
+      })
+        .attr("y", function (d) {
+          return y(d.y) + 6;
+        });
     }
 
     function rect(rect) {
-      rect.attr("x", function(d) { return d.x0; })
-        .attr("y", function(d) { return d.y0; })
-        .attr("width", function(d) { return d.x1 - d.x0; })
-        .attr("height", function(d) { return Math.abs(d.y0 - d.y1); })
-        .style("fill", function (d) { return colors()(d.color); })
-        .style("stroke","#fff");
+      rect
+        .attr("x", function (d) {
+          return x(d.x0);
+        })
+        .attr("y", function (d) {
+          return y(d.y0);
+        })
+        .attr("width", function (d) {
+          return x(d.x1) - x(d.x0);
+        })
+        .attr("height", function (d) {
+          return y(d.y1) - y(d.y0);
+        })
+        .attr("fill", function (d) {
+          // return '#bbbbbb';
+          return '#14d16c'
+        });
+    }
+
+    function createInsideElement(el) {
+      // In each function, d is an element of the current selection
+      // ie. in this code, it is the selection when 'call' is used
+      el
+        .attr('x', function(d) {
+          return x(d.x0) + (x(d.x1) - x(d.x0))/3;
+        })
+        .attr('y', function(d) {
+          return y(d.y0) + Math.abs(y(d.y0) - y(d.y1))/3;
+        })
+        .attr("width", function (d) {
+          return (x(d.x1) - x(d.x0))/3;
+        })
+        .attr("height", function (d) {
+          return (y(d.y1) - y(d.y0))/3;
+        })
+        .attr("fill", function (d) {
+          // return '#bbbbbb';
+          return '#FF0000'
+        });
+    }
+
+    function createInsideElementRect(el) {
+      // In each function, d is an element of the current selection
+      // ie. in this code, it is the selection when 'call' is used
+      el
+        .attr('x', function(d) {
+          return x(d.x0) + (x(d.x1) - x(d.x0))/3;
+        })
+        .attr('y', function(d) {
+          return y(d.y0) + Math.abs(y(d.y0) - y(d.y1))/3;
+        })
+        .attr("width", function (d) {
+          return (x(d.x1) - x(d.x0))/3;
+        })
+        .attr("height", function (d) {
+          return (y(d.y1) - y(d.y0))/3;
+        })
+        .attr("fill", function (d) {
+          // return '#bbbbbb';
+          return '#FF0000'
+        });
+    }
+
+    function foreign(foreign) { /* added */
+      foreign
+        .attr("x", function (d) {
+          return x(d.x0);
+        })
+        .attr("y", function (d) {
+          return y(d.y0);
+        })
+        .attr("width", function (d) {
+          return x(d.x1) - x(d.x0);
+        })
+        .attr("height", function (d) {
+          return y(d.y1) - y(d.y0);
+        });
     }
 
     function name(d) {
-      return d.parent
-        ? name(d.parent) + "." + d.name
-        : d.name;
+      return d.data.name;
     }
 
+    // Return the name of the ith inside element
+    function nameInsideElement (d) {
+      console.log('data', d)
+      console.log('name', d.nameInsideElement)
+      return d.nameInsideElement;
+    }
 
+    function breadcrumbs(d) {
+      var res = "";
+      var sep = " > ";
+      d.ancestors().reverse().forEach(function(i){
+        res += name(i) + sep;
+      });
+      res = res
+        .split(sep)
+        .filter(function(i){
+          return i!== "";
+        })
+        .join(sep);
+      return res +
+        (d.parent
+          ? " -  Click to zoom out"
+          : " - Click inside square to zoom in");
+    };
   })
 })();
