@@ -66,8 +66,6 @@
       .attr("y", -margin.top)
       .attr("width", width)
       .attr("height", margin.top)
-      //.attr("fill", '#bbbbbb');
-      .attr("fill", '#14d16c');
 
     grandparent.append("text")
       .attr("x", 6)
@@ -105,10 +103,17 @@
       grandparent
         .datum(d.parent)
         .select("rect")
-        .attr("fill", function () {
-          // return '#bbbbbb'
-          return '#14d16c'
-        });
+        .style("fill", function () {
+          return '#ff9933'
+        })
+        .style("fill-opacity", .7)
+        .on("mouseover", function (d) {
+          d3.select(this).style("fill-opacity", 1);
+        })
+        .on("mouseout", function (d) {
+          d3.select(this).style("fill-opacity", .7);
+        })
+      ;
 
       var g1 = svg.insert("g", ".grandparent")
         .datum(d)
@@ -121,7 +126,6 @@
 
       // add class and click handler to all g's with children
       g.filter(function (d) {
-        // console.log('clicked', d)
         return d.children;
       })
         .attr("class", "children")
@@ -131,18 +135,26 @@
       // Create rectangle for all children
       g.selectAll(".child")
         .data(function (d) {
-          // console.log('my chidrenene', d)
           return d.children || [d];
         })
         .enter()
         .append("rect")
         .attr("class", "child")
+        .style("stroke-width", "2px")
         .call(rect);
 
-      // add title to parents
+      // Create and customize parent rectangles
       g.append("rect")
         .attr("class", "parent")
         .call(rect)
+        .style("fill", '#3399ff')
+        .style("fill-opacity", .5)
+        .on("mouseover", function (d) {
+          d3.select(this).style("fill-opacity", 1);
+        })
+        .on("mouseout", function (d) {
+          d3.select(this).style("fill-opacity", .5);
+        })
         .append("title")
         .text(function (d){
           return name(d);
@@ -158,9 +170,7 @@
         })
         .html(function (d) {
           return '' +
-            '<p class="title">' + name(d) + '</p>'
-            //+ '<p>' + formatNumber(d.value) + '</p>'
-            ;
+            '<p class="title">' + name(d) + '</p>';
         })
         .attr("class", "textdiv"); //textdiv class allows us to style the text easily with CSS
 
@@ -168,6 +178,12 @@
       console.log('a', d)
       if (d.depth === 2) {
         console.log('b', d)
+
+        // Make sure there is no colour difference on hover on last layer
+        g.selectAll('.parent')
+          .on("mouseover", function (d) {
+          d3.select(this).style("fill-opacity", 0.5);
+        })
 
         // Create all inside Elements rectangle
         var selectionInsideElements = g1.selectAll("g")
@@ -182,21 +198,25 @@
           .data(function (d) {
             console.log('inside', d)
             return d.data.insideElements.map((el, i) => {
+              // Position of each inside element and text, and its name
               return {
                 nameInsideElement: el,
-                x0: d.x0 + i * (d.x1 - d.x0) / d.data.insideElements.length,
-                x1: d.x0 + (i + 1) * (d.x1 - d.x0) / d.data.insideElements.length,
+                x0: d.x0 + i * (d.x1 - d.x0) / d.data.insideElements.length + 3,
+                x1: d.x0 + (i + 1) * (d.x1 - d.x0) / d.data.insideElements.length - 3,
                 y0: d.y0 + (1 / 3) * (d.y1 - d.y0),
-                y1: d.y1,
-                x: d.x0 + i * (d.x1 - d.x0) / d.data.insideElements.length,
-                y: (d.y0 + (1 / 3) * (d.y1 - d.y0)) + (5/100) * (d.y1 - (d.y0 + (1 / 3) * (d.y1 - d.y0)))
+                y1: d.y1 - 5,
+                x: d.x0 + i * (d.x1 - d.x0) / d.data.insideElements.length + 3,
+                y: (d.y0 + (1 / 3) * (d.y1 - d.y0)) + (5/100) * (d.y1 - 5 - (d.y0 + (1 / 3) * (d.y1 - d.y0)))
               }
             })
           })
           .enter()
 
         selectionRectInsideElements.append("rect")
-        .attr("class", "rectInsideElement")
+          .attr("class", "rectInsideElement")
+          .style("fill", function (d) {
+            return '#ff0000'
+          })
 
         selectionRectInsideElements.append("text")
           .text(function (d) { return nameInsideElement(d)})
@@ -258,7 +278,6 @@
     }
 
     function text(text) {
-      // TODO : sans doute un problème ici sur la redéfinition des x et y
       text.attr("x", function (d) {
         console.log('data', d)
         console.log('data xdx', x(d.x))
@@ -272,14 +291,6 @@
     function rect(rect) {
       rect
         .attr("x", function (d) {
-          /* console.log('coucocu', d.x0)
-          console.log(d.x1)
-          console.log(d.y0)
-          console.log(d.y1)
-          console.log(x(d.x0))
-          console.log(x(d.x1))
-          console.log(y(d.y0))
-          console.log(y(d.y1)) */
           return x(d.x0);
         })
         .attr("y", function (d) {
@@ -291,10 +302,10 @@
         .attr("height", function (d) {
           return y(d.y1) - y(d.y0);
         })
-        .attr("fill", function (d) {
+        /* .style("fill", function (d) {
           // return '#bbbbbb';
-          return '#14d16c'
-        });
+          return '#3399ff'
+        }); */
     }
 
     function createInsideElement(el) {
@@ -313,8 +324,7 @@
         .attr("height", function (d) {
           return (y(d.y1) - y(d.y0))/3;
         })
-        .attr("fill", function (d) {
-          // return '#bbbbbb';
+        .style("fill", function (d) {
           return '#FF0000'
         });
     }
@@ -335,8 +345,7 @@
         .attr("height", function (d) {
           return (y(d.y1) - y(d.y0))/3;
         })
-        .attr("fill", function (d) {
-          // return '#bbbbbb';
+        .style("fill", function (d) {
           return '#FF0000'
         });
     }
