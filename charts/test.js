@@ -1,8 +1,8 @@
 (function(){
 
-  var tree = raw.models.customTree();
+  let tree = raw.models.customTree();
 
-  var chart = raw.chart()
+  let chart = raw.chart()
     .title('Test')
     .description(
       "AAA space filling visualization of data hierarchies and proportion between elements. The different hierarchical levels create visual clusters through the subdivision into rectangles proportionally to each element's value. Treemaps are useful to represent the different proportion of nested hierarchical data structures.<br/>Based on <a href='http://bl.ocks.org/mbostock/4063582'>http://bl.ocks.org/mbostock/4063582</a>")
@@ -10,58 +10,55 @@
     .category('Hierarchies')
     .model(tree)
 
-  var rawWidth = chart.number()
+  let rawWidth = chart.number()
     .title('Width')
     .defaultValue(100)
     .fitToWidth(true)
 
-  var rawHeight = chart.number()
+  let rawHeight = chart.number()
     .title("Height")
     .defaultValue(500)
 
-  var padding = chart.number()
-    .title("Padding")
-    .defaultValue(0)
-
-  var colors = chart.color()
+  let colors = chart.color()
     .title("Color scale")
 
   // Function used each time columns are put in dimensions on RAWGraphs
   chart.draw(function (selection, data){
     data.name = 'Zoomable Tree'
-    var rawData = tree.getData()
-    var columnsDimensions = tree.nameColumnsInDimension()
-    var treeDepth = columnsDimensions.hierarchy.length
-    var insideElementNames = columnsDimensions.insideElements
-    var insideColorElementsNames = columnsDimensions.colorInsideElements
-    var colorValues = []
+    let rawData = tree.getData()
+    let columnsDimensions = tree.nameColumnsInDimension()
+    let treeDepth = columnsDimensions.hierarchy.length
+    let insideElementsNames = columnsDimensions.insideElements
+    let insideColorElementsNames = columnsDimensions.colorInsideElements
+    let colorValues = []
 
-    insideColorElementsNames.forEach(function (name) {
-      colorValues.push(rawData.map(el => el[name]));
-    })
+    if (!(insideColorElementsNames == null)) {
+      insideColorElementsNames.forEach(function (name) {
+        colorValues.push(rawData.map(el => el[name]))
+      })
+    }
 
-    var margin = {top: 30, right: 0, bottom: 20, left: 0},
+    let margin = {top: 30, right: 0, bottom: 20, left: 0},
       width =  +rawWidth() -25,
       height = +rawHeight() - margin.top - margin.bottom,
-      formatNumber = d3.format(",d"), // changed add d
       transitioning;
 
     // sets x and y scale to determine size of visible boxes
-    var x = d3.scaleLinear()
+    let x = d3.scaleLinear()
       .domain([0, width])
       .range([0, width]);
 
-    var y = d3.scaleLinear()
+    let y = d3.scaleLinear()
       .domain([0, height])
       .range([0, height]);
 
-    var treemap = d3.treemap()
+    let treemap = d3.treemap()
+      .tile(d3.treemapResquarify)
       .size([width, height])
       .padding(0)
-      .round(false)
-      //.tile(d3.treemapSquarify);
+      .round(true)
 
-    var svg = selection
+    let svg = selection
       .attr("width", width + margin.left + margin.right)
       .attr("height", height + margin.bottom + margin.top)
       .style("margin-left", -margin.left + "px")
@@ -70,7 +67,7 @@
       .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
       .style("shape-rendering", "crispEdges");
 
-    var grandparent = svg.append("g")
+    let grandparent = svg.append("g")
       .attr("class", "grandparent");
 
     grandparent.append("rect")
@@ -81,13 +78,13 @@
     grandparent.append("text")
       .attr("x", 6)
       .attr("y", 6 - margin.top)
-  .attr("dy", ".75em");
+  .attr("dy", '0.75em');
 
-    var root = d3.hierarchy(data);
+    let root = d3.hierarchy(data);
     console.log('data', data)
-    console.log('hirearchy', root)
+    console.log('hierarchy', root)
     treemap(root
-      .sum(function(d) { return 1; })
+      .sum(function() { return 1; })
       .sort(function(a, b) { return a.value - b.value; })
     );
     display(root);
@@ -109,19 +106,19 @@
           return '#ff9933'
         })
         .style("fill-opacity", .7)
-        .on("mouseover", function (d) {
+        .on("mouseover", function () {
           d3.select(this).style("fill-opacity", 1);
         })
-        .on("mouseout", function (d) {
+        .on("mouseout", function () {
           d3.select(this).style("fill-opacity", .7);
         })
       ;
 
-      var g1 = svg.insert("g", ".grandparent")
+      let g1 = svg.insert("g", ".grandparent")
         .datum(d)
         .attr("class", "depth");
 
-      var g = g1.selectAll("g")
+      let g = g1.selectAll("g")
         .data(d.children)
         .enter()
         .append("g");
@@ -151,11 +148,15 @@
         .call(rect)
         .style("fill", '#3399ff')
         .style("fill-opacity", .5)
-        .on("mouseover", function (d) {
-          d3.select(this).style("fill-opacity", 1);
+        .on("mouseover", function () {
+          if (d.depth !== treeDepth - 1) {
+            d3.select(this).style("fill-opacity", 1);
+          }
         })
-        .on("mouseout", function (d) {
-          d3.select(this).style("fill-opacity", .5);
+        .on("mouseout", function () {
+          if (d.depth !== treeDepth - 1) {
+            d3.select(this).style("fill-opacity", .5);
+          }
         })
         .append("title")
         .text(function (d){
@@ -178,31 +179,25 @@
 
       // Create rectangle for all children who have no children to put inside elements
       console.log('a', d)
-      if (d.depth === treeDepth - 1) {
+      if (d.depth === treeDepth - 1 && !(insideElementsNames == null)) {
         console.log('b', d)
 
-        // Make sure there is no colour difference on hover on last layer
-        g.selectAll('.parent')
-          .on("mouseover", function (d) {
-          d3.select(this).style("fill-opacity", 0.5);
-        })
-
         // Create all inside Elements rectangle
-        var selectionInsideElements = g1.selectAll("g")
+        let selectionInsideElements = g1.selectAll("g")
           .insert('g', '.foreignObject')
           .data(function (d) {
             return d.children
           })
           .attr('class', 'insideElements')
 
-        var selectionRectInsideElements = selectionInsideElements.selectAll('.insideElements')
+        let selectionRectInsideElements = selectionInsideElements.selectAll('.insideElements')
           .data(function (d) {
             console.log('inside', d)
             return d.data.insideElements.map((el, i) => {
               // Position of each inside element and text, and its name
               return {
                 nameInsideElement: el,
-                colorInsideElement: pickHex(d.data.colorInsideElements[i],
+                colorInsideElement: (insideColorElementsNames == null)?'#4332ff':pickHex(d.data.colorInsideElements[i],
                   {red:0, green: 255, blue: 0},
                   {red:255, green: 0, blue: 0}),
                 x0: d.x0 + i * (d.x1 - d.x0) / d.data.insideElements.length + 3,
@@ -223,13 +218,17 @@
           })
 
         selectionRectInsideElements.append("text")
-          .text(function (d) { return nameInsideElement(d)})
+          .text(function (d) {
+            return nameInsideElement(d)
+          })
+          .attr('dy', function (d) { return '.95em'})
+          .attr('class', 'insideName')
       }
 
       function transition(d) {
         if (transitioning || !d) return;
         transitioning = true;
-        var g2 = display(d),
+        let g2 = display(d),
           t1 = g1.transition().duration(650),
           t2 = g2.transition().duration(650);
 
@@ -251,14 +250,34 @@
 
         /*added*/
         // Transition to the new view.
-        t1.selectAll("text").call(text).style("fill-opacity", 0);
-        t2.selectAll("text").call(text).style("fill-opacity", 1);
+        t1.selectAll("text:not(.insideName)").call(text).style("fill-opacity", 0);
+        t2.selectAll("text:not(.insideName)").call(text).style("fill-opacity", 1);
         t1.selectAll("rect:not(.insideElement)").call(rect);
         t2.selectAll("rect:not(.insideElement)").call(rect);
         t1.selectAll('.rectInsideElement')
           .call(rect);
         t2.selectAll('.rectInsideElement')
           .call(rect);
+        t1.selectAll('.insideName')
+          .style("fill-opacity", 0)
+          .each(function () {
+            let selectedText = d3.select(this)
+            text(selectedText);
+          })
+
+        t1.selectAll('.insideName')
+          .call(wrap);
+
+        t2.selectAll('.insideName')
+          .style("fill-opacity", 1)
+          .each(function () {
+            let selectedText = d3.select(this)
+            text(selectedText);
+          })
+
+        t2.selectAll('.insideName')
+          .call(wrap);
+
         /* Foreign object */
         t1.selectAll(".textdiv").style("display", "none");
         /* added */
@@ -279,12 +298,13 @@
 
     function text(text) {
       text.attr("x", function (d) {
-        console.log('data', d)
-        console.log('data xdx', x(d.x))
         return x(d.x) + 6;
       })
         .attr("y", function (d) {
           return y(d.y) + 6;
+        })
+        .attr('width', function (d) {
+          return x(d.x1) - x(d.x0)
         });
     }
 
@@ -302,48 +322,6 @@
         .attr("height", function (d) {
           return y(d.y1) - y(d.y0);
         })
-    }
-
-    function createInsideElement(el) {
-      // In each function, d is an element of the current selection
-      // ie. in this code, it is the selection when 'call' is used
-      el
-        .attr('x', function(d) {
-          return x(d.x0) + (x(d.x1) - x(d.x0))/3;
-        })
-        .attr('y', function(d) {
-          return y(d.y0) + Math.abs(y(d.y0) - y(d.y1))/3;
-        })
-        .attr("width", function (d) {
-          return (x(d.x1) - x(d.x0))/3;
-        })
-        .attr("height", function (d) {
-          return (y(d.y1) - y(d.y0))/3;
-        })
-        .style("fill", function (d) {
-          return '#FF0000'
-        });
-    }
-
-    function createInsideElementRect(el) {
-      // In each function, d is an element of the current selection
-      // ie. in this code, it is the selection when 'call' is used
-      el
-        .attr('x', function(d) {
-          return x(d.x0) + (x(d.x1) - x(d.x0))/3;
-        })
-        .attr('y', function(d) {
-          return y(d.y0) + Math.abs(y(d.y0) - y(d.y1))/3;
-        })
-        .attr("width", function (d) {
-          return (x(d.x1) - x(d.x0))/3;
-        })
-        .attr("height", function (d) {
-          return (y(d.y1) - y(d.y0))/3;
-        })
-        .style("fill", function (d) {
-          return '#FF0000'
-        });
     }
 
     function foreign(foreign) { /* added */
@@ -369,13 +347,13 @@
     // Return the name of the ith inside element
     function nameInsideElement (d) {
       console.log('data', d)
-      console.log('name', d.nameInsideElement)
+        console.log('name', d.nameInsideElement)
       return d.nameInsideElement;
     }
 
     function breadcrumbs(d) {
-      var res = "";
-      var sep = " > ";
+      let res = "";
+      let sep = " > ";
       d.ancestors().reverse().forEach(function(i){
         res += name(i) + sep;
       });
@@ -389,16 +367,44 @@
         (d.parent
           ? " -  Click to zoom out"
           : " - Click inside square to zoom in");
-    };
+    }
 
     // function that returns a color over a radient depending on the weight (between 0 and 1)
     function pickHex(weight, color1, color2) {
-      var w1 = weight;
-      var w2 = 1 - w1;
-      var rgb = [Math.round(color1.red * w1 + color2.red * w2),
+      let w1 = weight;
+      let w2 = 1 - w1;
+      let rgb = [Math.round(color1.red * w1 + color2.red * w2),
         Math.round(color1.green * w1 + color2.green * w2),
-        Math.round(color1.green * w1 + color2.green * w2)];
+        Math.round(color1.blue * w1 + color2.blue * w2)];
       return 'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')';
+    }
+
+    // Wraps text so that text is on multiple lines if ever bigger than container
+    function wrap(selectedText) {
+      selectedText
+        .each(function () {
+        let text = d3.select(this),
+          words = text.text().split(/\s+/).reverse(),
+          word,
+          line = [],
+          lineNumber = 0,
+          lineHeight = 1.1, // ems
+          y = text.attr("y"),
+          x = text.attr("x"),
+          width = text.attr('width'),
+          dy = parseFloat(text.attr("dy")),
+          tspan = text.text(null).append("tspan").attr("x", x).attr("y", y).attr("dy", dy + "em");
+        while (word = words.pop()) {
+          line.push(word);
+          tspan.text(line.join(" "));
+          if (tspan.node().getComputedTextLength() > width - 2) {
+            line.pop();
+            tspan.text(line.join(" "));
+            line = [word];
+            tspan = text.append("tspan").attr("x", x).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+          }
+        }
+      })
     }
   })
 })();
