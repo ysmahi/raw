@@ -38,11 +38,11 @@
 
   let rawWidth = chart.number()
     .title('Width')
-    .defaultValue(1500)
+    .defaultValue(800)
 
   let rawHeight = chart.number()
     .title('Height')
-    .defaultValue(1500)
+    .defaultValue(1100)
 
   let margin = chart.number()
     .title('Margin')
@@ -120,7 +120,7 @@
       let colorElement = data.filter(item => item[dimElementInside] === nameInsideElement)
         .map(el => el.colorElement)[0]
 
-      let uniqueRowsName = rows.filter((v, i, a) => a.indexOf(v) === i)
+      uniqueRowsName = rows.filter((v, i, a) => a.indexOf(v) === i)
         .sort((a, b) => {
           return rowsName.indexOf(a) - rowsName.indexOf(b)
         })
@@ -137,28 +137,114 @@
           })
 
         if (nameUniqueCols.length > 1) {
-          horizontalElementsData.push({
-            nameInsideElement: nameInsideElement,
-            columnsName: nameUniqueCols,
-            rowName: rowName,
-            colorElement: colorElement
-          })
+          let cs = [nameUniqueCols[0]]
+          for (let l=1; l<nameUniqueCols.length; l++) {
+            if (columnsName.indexOf(nameUniqueCols[l]) - columnsName.indexOf(nameUniqueCols[l - 1]) > 1) {
+              // columns not next to each other
+              if (cs.length > 1) {
+                // element is on multiple columns next to each other
+                horizontalElementsData.push({
+                  nameInsideElement: nameInsideElement,
+                  columnsName: cs,
+                  rowName: rowName,
+                  colorElement: colorElement
+                })
+              }
+              else {
+                let dataElement = {}
+                dataElement[dimElementInside] = nameInsideElement
+                dataElement[dimColumn] = cs[0]
+                dataElement[dimRow] = rowName
+                dataElement.colorElement = colorElement
+                singleElementsData.push(dataElement)
+              }
+              cs = [nameUniqueCols[l]]
+              if (l === nameUniqueCols.length - 1) {
+                let dataElement = {}
+                dataElement[dimElementInside] = nameInsideElement
+                dataElement[dimColumn] = cs[0]
+                dataElement[dimRow] = rowName
+                dataElement.colorElement = colorElement
+                singleElementsData.push(dataElement)
+              }
+            }
+            else {
+              cs.push(nameUniqueCols[l])
+              if (l === nameUniqueCols.length - 1) {
+                horizontalElementsData.push({
+                  nameInsideElement: nameInsideElement,
+                  columnsName: cs,
+                  rowName: rowName,
+                  colorElement: colorElement
+                })
+              }
+            }
+          }
         }
         else {
+          let r = []
           let nameCol = nameUniqueCols[0]
-          let r = rowsData.filter(el => el[dimColumn] === nameCol)
+          r = rowsData.filter(el => el[dimColumn] === nameCol)
             .map(el => el[dimRow])
+            .filter((v, i, a) => a.indexOf(v) === i)
             .sort((a, b) => {
               return rowsName.indexOf(a) - rowsName.indexOf(b)
             })
 
           if (r.length > 1) {
-            verticalElementsData.push({
-              nameInsideElement: nameInsideElement,
-              columnName: nameCol,
-              rowsName: r,
-              colorElement: colorElement
-            })
+            let rs = [r[0]]
+            for (let l=1; l<r.length; l++) {
+              if (rowsName.indexOf(r[l]) - rowsName.indexOf(r[l - 1]) > 1) {
+                // rows not next to each other
+                if (rs.length > 1) {
+                  // element is on multiple rows next to each other
+                  verticalElementsData.push({
+                    nameInsideElement: nameInsideElement,
+                    columnName: nameCol,
+                    rowsName: rs,
+                    colorElement: colorElement
+                  })
+                }
+                else {
+                  let dataElement = {}
+                  dataElement[dimElementInside] = nameInsideElement
+                  dataElement[dimColumn] = nameCol
+                  dataElement.colorElement = colorElement
+                  dataElement[dimRow] = rs[0]
+
+                  // Check if element already in singleElementsData
+                  let stringSingElData = singleElementsData.map(el => JSON.stringify(el))
+                  if (stringSingElData.indexOf(JSON.stringify(dataElement)) === -1) {
+                    singleElementsData.push(dataElement)
+                  }
+                }
+                rs = [r[l]]
+                if (l === r.length - 1) {
+                  let dataElement = {}
+                  dataElement[dimElementInside] = nameInsideElement
+                  dataElement[dimColumn] = nameCol
+                  dataElement[dimRow] = rs[0]
+                  dataElement.colorElement = colorElement
+
+                  // Check if element already in singleElementsData
+                  let stringSingElData = singleElementsData.map(el => JSON.stringify(el))
+                  if (stringSingElData.indexOf(JSON.stringify(dataElement)) === -1) {
+                    singleElementsData.push(dataElement)
+                  }
+                }
+              }
+              else {
+                rs.push(r[l])
+                if (l === r.length - 1) {
+                  verticalElementsData.push({
+                    nameInsideElement: nameInsideElement,
+                    columnName: nameCol,
+                    rowsName: rs,
+                    colorElement: colorElement
+                  })
+                }
+              }
+            }
           }
           else {
             // those element's columns and rows are not next to each other
@@ -190,7 +276,10 @@
     console.log('single', singleElementsData)
 
     // Create position data for grid
-    let gridData = createGridData(rowsName.length + 1, columnsName.length + 1, 150, 150)
+    let gridData = createGridData(rowsName.length + 1,
+      columnsName.length + 1,
+      (width - 2) / (columnsName.length + 1),
+      (height - 1) / (rowsName.length + 1))
     // Append names of row and columns in data
     gridData[0].forEach((col, indexCol) => col.name = colNamesPlusEmpty[indexCol]) // name columns
     for(let i=1; i<gridData.length; i++) { // name rows
@@ -216,8 +305,10 @@
 
     let grid = d3.select('#grid')
       .append('svg')
-      .attr('width', '1000px')
-      .attr('height', '1200px')
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.bottom + margin.top)
+      .style("margin-left", -margin.left + "px")
+      .style("margin.right", -margin.right + "px")
 
     // Create g for each row
     let row = grid.selectAll(".Row")
