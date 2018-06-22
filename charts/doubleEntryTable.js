@@ -59,8 +59,8 @@
   chart.draw(function(selection, data) {
     // data is the data structure resulting from the application of the model
     console.log('dataChart', data)
-    let dimColumn = 'dimColumn';
-    let dimRow = 'dimRow';
+    let dimColumn = 'dimColumn'
+    let dimRow = 'dimRow'
     let dimElementInside = 'dimElementInside'
 
     let margin = {top: 30, right: 0, bottom: 20, left: 0},
@@ -102,7 +102,7 @@
           rowsData.push(el)
         })
 
-      uniqueRowsName = rows.filter((v, i, a) => a.indexOf(v) === i)
+      let uniqueRowsName = rows.filter((v, i, a) => a.indexOf(v) === i)
         .sort((a, b) => {
           return rowsName.indexOf(a) - rowsName.indexOf(b)
         })
@@ -126,9 +126,8 @@
           })
         }
         else {
-          let r = []
           let nameCol = nameUniqueCols[0]
-          r = rowsData.filter(el => el[dimColumn] === nameCol)
+          let r = rowsData.filter(el => el[dimColumn] === nameCol)
             .map(el => el[dimRow])
             .sort((a, b) => {
               return rowsName.indexOf(a) - rowsName.indexOf(b)
@@ -206,7 +205,7 @@
       .attr("class", "Row");
 
     // Create all cells
-    var cell = row.selectAll(".Cell")
+    let cell = row.selectAll(".Cell")
       .data(function(row) { return row; })
       .enter()
       .append('g')
@@ -261,12 +260,15 @@
       })
     })
 
-    let maxVerticalElements = Math.max(...matrixHorizEl.map(el => Math.max(...el))) + 1
-    let maxHorizontalElements = Math.max(...matrixVertEl.map(el => Math.max(...el))) + 1
-    let maxElementInCell = maxHorizontalElements * maxVerticalElements
+    let maxCellHeight = Math.max(...matrixHorizEl.map(el => Math.max(...el))) + 1
+    let maxCellWidth = Math.max(...matrixVertEl.map(el => Math.max(...el))) + 1
+    let maxElementInCell = maxCellWidth * maxCellHeight
+
+    console.log('maxCellWidth', maxCellWidth)
+    console.log('maxVertElements', maxCellHeight)
 
     // Create a g for each cell (inCell is in front of cell, same size)
-    inCell = cell.append('g')
+    let inCell = cell.append('g')
       .attr('class', 'InCell')
       .attr('id', inCell => {
         if (typeof inCell.rowName !== 'undefined') {
@@ -279,10 +281,10 @@
       .data(inCell => {
         let posSvg = []
         for(let i=0; i<maxElementInCell; i++) {
-          posSvg[i] = {x: inCell.x + (i%maxHorizontalElements)*(inCell.width/maxHorizontalElements),
-            y: inCell.y + (Math.trunc(i/maxHorizontalElements))*(inCell.height/maxVerticalElements),
-            width: inCell.width/maxHorizontalElements,
-            height: inCell.height/maxVerticalElements,
+          posSvg[i] = {x: inCell.x + (i%maxCellWidth)*(inCell.width/maxCellWidth),
+            y: inCell.y + (Math.trunc(i/maxCellWidth))*(inCell.height/maxCellHeight),
+            width: inCell.width/maxCellWidth,
+            height: inCell.height/maxCellHeight,
             posInCell: i,
             rowName: inCell.rowName,
             columnName: inCell.columnName}
@@ -303,11 +305,11 @@
           // Create top of element in the upper row
           let matrixSelectionUpperSvg = getCellMatrix(grid,
             '#' + vertEl.rowsName[i] + vertEl.columnName,
-            maxHorizontalElements,
+            maxCellWidth,
             maxElementInCell)
           // get left lower part of the cell
-          for (var v = 0; v < maxVerticalElements; v++) {
-            for (var h = 0; h < maxHorizontalElements; h++) {
+          for (let v = 0; v < maxCellHeight; v++) {
+            for (let h = 0; h < maxCellWidth; h++) {
               if (matrixSelectionUpperSvg[v][h].attr('isEmpty') === 'true') {
                 if ((h < hValue && v === vValue) || v > vValue) {
                   hValue = h
@@ -338,10 +340,10 @@
           // Create Middle parts of the element
           let matrixSelectionMiddleSvg = getCellMatrix(grid,
             '#' + vertEl.rowsName[i] + vertEl.columnName,
-            maxHorizontalElements,
+            maxCellWidth,
             maxElementInCell)
 
-          for (let v=0; v<maxVerticalElements; v++) {
+          for (let v=0; v<maxCellHeight; v++) {
             // Create the body of the element on each row of the cell
             matrixSelectionMiddleSvg[v][hValue].append('rect')
               .attr('x', svg => svg.x)
@@ -354,8 +356,8 @@
           }
 
           // Append name of vertical element
-          let isEven = (maxVerticalElements%2 === 0)?true:false
-          matrixSelectionMiddleSvg[Math.trunc(maxVerticalElements/2)][hValue].append('text')
+          let isEven = (maxCellHeight%2 === 0)
+          matrixSelectionMiddleSvg[Math.trunc(maxCellHeight/2)][hValue].append('text')
             .attr('x', svg => svg.x + svg.width/2)
             .attr('y', svg => {
               return isEven?svg.y:(svg.y + svg.height/2)
@@ -369,7 +371,7 @@
           // Create the lower part of the element in the lower row
           let matrixSelectionLowerSvg = getCellMatrix(grid,
             '#' + vertEl.rowsName[i] + vertEl.columnName,
-            maxHorizontalElements,
+            maxCellWidth,
             maxElementInCell)
 
           // Create top of element
@@ -410,11 +412,11 @@
           // Create left of element in the left column
           let matrixSelectionLeftSvg = getCellMatrix(grid,
             '#' + horizEl.rowName + horizEl.columnsName[i],
-            maxHorizontalElements,
+            maxCellWidth,
             maxElementInCell)
           // get right upper part of the cell
-          for (var v = maxVerticalElements - 1; v > -1; v--) {
-            for (var h = maxHorizontalElements  - 1; h > -1; h--) {
+          for (let v = maxCellHeight - 1; v > -1; v--) {
+            for (let h = maxCellWidth  - 1; h > -1; h--) {
               if (matrixSelectionLeftSvg[v][h].attr('isEmpty') === 'true') {
                 if ((v < vValue && h === hValue) || h > hValue) {
                   hValue = h
@@ -439,10 +441,10 @@
           // Create Middle parts of the element
           let matrixSelectionMiddleSvg = getCellMatrix(grid,
             '#' + horizEl.rowName + horizEl.columnsName[i],
-            maxHorizontalElements,
+            maxCellWidth,
             maxElementInCell)
 
-          for (let h=0; h<maxHorizontalElements; h++) {
+          for (let h=0; h<maxCellWidth; h++) {
             // Create the body of the element on each row of the cell
             matrixSelectionMiddleSvg[vValue][h].append('rect')
               .attr('x', svg => svg.x)
@@ -455,8 +457,8 @@
           }
 
           // Append name of horizontal element
-          let isEven = (maxHorizontalElements%2 === 0)?true:false
-          matrixSelectionMiddleSvg[vValue][Math.trunc(maxHorizontalElements/2)].append('text')
+          let isEven = (maxCellWidth%2 === 0)
+          matrixSelectionMiddleSvg[vValue][Math.trunc(maxCellWidth/2)].append('text')
             .attr('x', svg => {
               return (isEven)?svg.x:(svg.x + svg.width/2)
             })
@@ -470,7 +472,7 @@
           // Create the right part of the element in the right column
           let matrixSelectionRightSvg = getCellMatrix(grid,
             '#' + horizEl.rowName + horizEl.columnsName[i],
-            maxHorizontalElements,
+            maxCellWidth,
             maxElementInCell)
 
           // Create top of element
@@ -497,35 +499,47 @@
     })
 
     // Create single elements
-    singleElementsData.forEach((element, i) => {
-      // TODO : here center single elements 1) collect all empty cells and indexes (i, j) of position of svg in cell
-      // TODO : 2) calculate distance with centerpoint and minimize
-      let emptyEmplacements = []
-      let selectionSvg = grid.select('#' + element[dimRow] + element[dimColumn]).selectAll('svg')
-        .each(function (svg) {
-          let selSvg = d3.select(this)
-          if (selSvg.attr('isEmpty') === 'true') {
-            emptyEmplacements.push(selSvg)
+    singleElementsData.forEach(element => {
+      let matrixSelectionSvg = getCellMatrix(grid,
+        '#' + element[dimRow] + element[dimColumn],
+        maxCellWidth,
+        maxElementInCell)
+
+      let xCenter = maxCellWidth / 2
+      let yCenter = maxCellHeight / 2
+      let dist = Math.pow(Math.pow(xCenter, 2) + Math.pow(yCenter, 2), 0.5)
+      let iRow = 0
+      let jCol = 0
+
+      matrixSelectionSvg.forEach((row, i) => {
+        row.forEach((cell, j) => {
+          if (cell.attr('isEmpty') === 'true') {
+            if ((Math.pow(Math.pow(xCenter - j - 0.5, 2) + Math.pow(yCenter - i - 0.5, 2), 0.5)) < dist) {
+              iRow = i
+              jCol = j
+              dist = Math.pow(Math.pow(xCenter - jCol - 0.5, 2) + Math.pow(yCenter - iRow - 0.5, 2), 0.5)
+            }
           }
         })
+      })
 
-      emptyEmplacements[0].append('circle')
+      matrixSelectionSvg[iRow][jCol].append('circle')
         .attr('cx', svg => svg.x + svg.width/2)
         .attr('cy', svg => svg.y + svg.height/2)
         .attr('r', svg => Math.min(svg.height/2, svg.width/2))
         .attr('fill', '#66ccff')
 
-      emptyEmplacements[0].append('text')
+      matrixSelectionSvg[iRow][jCol].append('text')
         .attr('x', svg => svg.x + svg.width/2)
         .attr('y', svg => svg.y + svg.height/2)
         .attr('text-anchor', 'middle')
         .attr('alignment-baseline', 'central')
         .text(element[dimElementInside])
 
-      emptyEmplacements[0].attr('isEmpty', 'false')
+      matrixSelectionSvg[iRow][jCol].attr('isEmpty', 'false')
     })
 
-    console.log('sel', getCellMatrix(grid, '#Brand1Finance', maxHorizontalElements, maxElementInCell))
+    console.log('sel', getCellMatrix(grid, '#Brand1Finance', maxCellWidth, maxElementInCell))
 
     // function that creates a grid
 // http://www.cagrimmett.com/til/2016/08/17/d3-lets-make-a-grid.html
@@ -560,11 +574,10 @@
     }
 
     function getCellMatrix (selection, id, horizElements, totalElements) {
-      let matrix = new Array(Math.trunc(totalElements/horizElements)).fill().map(el => [])
+      let matrix = new Array(Math.trunc(totalElements/horizElements)).fill().map(() => [])
       selection.select(id).selectAll('svg')
         .each(function (svg, i) {
-          let selSvg = d3.select(this)
-          matrix[Math.trunc(i/horizElements)][i%horizElements] = selSvg
+          matrix[Math.trunc(i/horizElements)][i%horizElements] = d3.select(this)
         })
 
       return matrix
