@@ -14,13 +14,18 @@
     .title('Elements inside cells')
     .types(String)
 
+  let colorElements = model.dimension()
+    .title('Color of Elements')
+    .types(String, Number)
+
   /* Map function */
   model.map(data => {
     return data.map(el => {
       return {
         dimColumn: el[dimColumnRaw()],
         dimRow: el[dimRowRaw()],
-        dimElementInside: el[dimElementInsideRaw()]
+        dimElementInside: el[dimElementInsideRaw()],
+        colorElement: el[colorElements()]
       }
     })
   })
@@ -62,6 +67,8 @@
     let dimColumn = 'dimColumn'
     let dimRow = 'dimRow'
     let dimElementInside = 'dimElementInside'
+    let color1 = {red: 0, green: 153, blue: 51}
+    let color2 = {red: 204, green: 0, blue: 204}
 
     let margin = {top: 30, right: 0, bottom: 20, left: 0},
       width =  +rawWidth() - 25,
@@ -89,6 +96,14 @@
       .filter((v, i, a) => !(a.indexOf(v) === i))
       .filter((v, i, a) => a.indexOf(v) === i)
 
+    if (typeof data[0].colorElement === 'string') {
+      let uniqueStringColors = data.map(el => el.colorElement).filter((v, i, a) => a.indexOf(v) === i)
+      data = data.map(el => {
+        el.colorElement = uniqueStringColors.indexOf(el.colorElement)/uniqueStringColors.length
+        return el;
+      })
+    }
+
     // Separation of vertical and horizontal elements
     let horizontalElementsData = []
     let verticalElementsData = []
@@ -101,6 +116,9 @@
           rows.push(el[dimRow])
           rowsData.push(el)
         })
+
+      let colorElement = data.filter(item => item[dimElementInside] === nameInsideElement)
+        .map(el => el.colorElement)[0]
 
       let uniqueRowsName = rows.filter((v, i, a) => a.indexOf(v) === i)
         .sort((a, b) => {
@@ -122,7 +140,8 @@
           horizontalElementsData.push({
             nameInsideElement: nameInsideElement,
             columnsName: nameUniqueCols,
-            rowName: rowName
+            rowName: rowName,
+            colorElement: colorElement
           })
         }
         else {
@@ -137,7 +156,8 @@
             verticalElementsData.push({
               nameInsideElement: nameInsideElement,
               columnName: nameCol,
-              rowsName: r
+              rowsName: r,
+              colorElement: colorElement
             })
           }
           else {
@@ -147,6 +167,7 @@
             dataElement[dimElementInside] = nameInsideElement
             dataElement[dimColumn] = nameCol
             dataElement[dimRow] = r[0]
+            dataElement.colorElement = colorElement
             singleElementsData.push(dataElement)
           }
         }
@@ -183,6 +204,7 @@
         let currentCell = currentRow[j + 1]
         currentCell.rowName = rowsName[i - 1]
         currentCell.columnName = columnsName[j]
+        // currentCell.colorElement =
       }
     }
 
@@ -286,6 +308,7 @@
             width: inCell.width/maxCellWidth,
             height: inCell.height/maxCellHeight,
             posInCell: i,
+            colorElement: inCell.colorElement,
             rowName: inCell.rowName,
             columnName: inCell.columnName}
         }
@@ -325,13 +348,13 @@
             .attr('y', svg => svg.y + svg.height / 2)
             .attr('width', svg => svg.width)
             .attr('height', svg => svg.height / 2 + 3)
-            .style('fill', "red")
+            .style('fill', (à) => pickHex(vertEl.colorElement, color1, color2))
 
           matrixSelectionUpperSvg[vValue][hValue].append('circle')
             .attr('cx', svg => svg.x + svg.width / 2)
             .attr('cy', svg => svg.y + svg.height / 2)
             .attr('r', svg => svg.width / 2)
-            .attr('fill', 'red')
+            .attr('fill', () => pickHex(vertEl.colorElement, color1, color2))
 
           matrixSelectionUpperSvg[vValue][hValue].attr('isEmpty', 'false')
         }
@@ -350,7 +373,7 @@
               .attr('y', svg => svg.y)
               .attr('width', svg => svg.width)
               .attr('height', svg => svg.height + 3)
-              .style('fill', "red")
+              .style('fill', () => pickHex(vertEl.colorElement, color1, color2))
 
             matrixSelectionMiddleSvg[v][hValue].attr('isEmpty', 'false')
           }
@@ -380,13 +403,13 @@
             .attr('y', svg => svg.y)
             .attr('width', svg => svg.width)
             .attr('height', svg => svg.height / 2)
-            .style('fill', "red")
+            .style('fill', () => pickHex(vertEl.colorElement, color1, color2))
 
           matrixSelectionLowerSvg[0][hValue].append('circle')
             .attr('cx', svg => svg.x + svg.width / 2)
             .attr('cy', svg => svg.y + svg.height / 2)
             .attr('r', svg => svg.width / 2)
-            .attr('fill', 'red')
+            .attr('fill', () => pickHex(vertEl.colorElement, color1, color2))
 
           matrixSelectionLowerSvg[0][hValue].attr('isEmpty', 'false')
 
@@ -432,7 +455,7 @@
             .attr('y', svg => svg.y)
             .attr('width', svg => svg.width + 3)
             .attr('height', svg => svg.height)
-            .style('fill', "green")
+            .style('fill', () => pickHex(horizEl.colorElement, color1, color2))
 
           matrixSelectionLeftSvg[vValue][hValue].attr('isEmpty', 'false')
         }
@@ -451,7 +474,7 @@
               .attr('y', svg => svg.y)
               .attr('width', svg => svg.width + 3)
               .attr('height', svg => svg.height)
-              .style('fill', "green")
+              .style('fill', () => pickHex(horizEl.colorElement, color1, color2))
 
             matrixSelectionMiddleSvg[vValue][h].attr('isEmpty', 'false')
           }
@@ -481,7 +504,7 @@
             .attr('y', svg => svg.y)
             .attr('width', svg => svg.width)
             .attr('height', svg => svg.height)
-            .style('fill', "green")
+            .style('fill', () => pickHex(horizEl.colorElement, color1, color2))
 
           matrixSelectionRightSvg[vValue][0].attr('isEmpty', 'false')
 
@@ -527,7 +550,7 @@
         .attr('cx', svg => svg.x + svg.width/2)
         .attr('cy', svg => svg.y + svg.height/2)
         .attr('r', svg => Math.min(svg.height/2, svg.width/2))
-        .attr('fill', '#66ccff')
+        .attr('fill', () => pickHex(element.colorElement, color1, color2))
 
       matrixSelectionSvg[iRow][jCol].append('text')
         .attr('x', svg => svg.x + svg.width/2)
@@ -573,6 +596,7 @@
       return data;
     }
 
+    // Returns matrix of selection for each svg of the table cell
     function getCellMatrix (selection, id, horizElements, totalElements) {
       let matrix = new Array(Math.trunc(totalElements/horizElements)).fill().map(() => [])
       selection.select(id).selectAll('svg')
@@ -581,6 +605,16 @@
         })
 
       return matrix
+    }
+
+    // function that returns a color over a radient depending on the weight (between 0 and 1)
+    function pickHex(weight, color1, color2) {
+      let w1 = weight;
+      let w2 = 1 - w1;
+      let rgb = [Math.round(color1.red * w1 + color2.red * w2),
+        Math.round(color1.green * w1 + color2.green * w2),
+        Math.round(color1.blue * w1 + color2.blue * w2)];
+      return 'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')';
     }
   })
 })();
