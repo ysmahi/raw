@@ -325,14 +325,45 @@
       .attr('class', 'Cell')
 
     // Create rectangles for cells
+    let rowIndex = 0
     cell.append("rect")
-      .attr("class","Rect")
+      .attr("class", (rect, i) => {
+        let cellClass = 'insideTableRect'
+        if (i%(columnsName.length + 1) === 0) {
+          // Cell is row name
+          cellClass = 'rowNameRect'
+        }
+        if (rowIndex === 0) {
+          // Cell is column name
+          cellClass = (i === 0)?'firstRect':'columnNameRect'
+          rowIndex = (i === columnsName.length)?(rowIndex + 1):rowIndex
+        }
+
+        return cellClass
+      })
       .attr("x", function(d) { return d.x; })
       .attr("y", function(d) { return d.y; })
       .attr("width", function(d) { return d.width; })
       .attr("height", function(d) { return d.height; })
       .style("fill", "#fff")
-      .style("stroke", "#222");
+      .style("stroke", "#222")
+
+    // Adjust style of table
+    d3.selectAll('.rowNameRect')
+      .style('fill', '#668cff')
+      .style('stroke', "#ffffff")
+
+    d3.selectAll('.columnNameRect')
+      .style('fill', '#668cff')
+      .style('stroke', "#ffffff")
+
+    d3.selectAll('.insideTableRect')
+      .style('fill', '#d9d9d9')
+      .style('stroke', "#ffffff")
+
+    d3.selectAll('.firstRect')
+      .style('opacity', '0')
+      .style('filter', 'alpha(opacity=0)')
 
     // Append name of rows and columns
     cell.append('text')
@@ -341,6 +372,7 @@
       .attr("dy", ".35em")
       .attr('text-anchor', 'middle')
       .attr('alignment-baseline', 'central')
+      .style('font-weight', 'bold')
       .text(cell => {
         if (cell.hasOwnProperty('name')) {
           return cell.name
