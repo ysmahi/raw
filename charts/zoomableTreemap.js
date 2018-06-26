@@ -143,19 +143,10 @@
       // Create and customize parent rectangles
       g.append("rect")
         .attr("class", "parent")
+        .attr("id", d => d.data.name)
         .call(rect)
         .style("fill", '#3399ff')
         .style("fill-opacity", .5)
-        .on("mouseover", function () {
-          if (d.depth !== treeDepth - 1) {
-            d3.select(this).style("fill-opacity", 1);
-          }
-        })
-        .on("mouseout", function () {
-          if (d.depth !== treeDepth - 1) {
-            d3.select(this).style("fill-opacity", .5);
-          }
-        })
         .append("title")
         .text(function (d){
           return name(d);
@@ -164,6 +155,16 @@
       /* Adding a foreign object instead of a text object, allows for text wrapping */
       g.append("foreignObject")
         .call(rect)
+        .on("mouseover", function (d) {
+          if (d.depth !== treeDepth) {
+            d3.select('#' + d.data.name).style("fill-opacity", 1);
+          }
+        })
+        .on("mouseout", function (d) {
+          if (d.depth !== treeDepth) {
+            d3.select('#' + d.data.name).style("fill-opacity", .5);
+          }
+        })
         .attr("class", "foreignobj")
         .append("xhtml:div")
         .attr("title", function(d) {

@@ -468,16 +468,16 @@
 
           // Create top of element
           matrixSelectionUpperSvg[vValue][hValue].append('rect')
-            .attr('x', svg => svg.x)
+            .attr('x', svg => svg.x + (svg.width - Math.min(svg.width, svg.height))/2)
             .attr('y', svg => svg.y + svg.height / 2)
-            .attr('width', svg => svg.width)
+            .attr('width', svg => Math.min(svg.width, svg.height))
             .attr('height', svg => svg.height / 2 + 3)
             .style('fill', (à) => pickHex(vertEl.colorElement, color1, color2))
 
           matrixSelectionUpperSvg[vValue][hValue].append('circle')
             .attr('cx', svg => svg.x + svg.width / 2)
             .attr('cy', svg => svg.y + svg.height / 2)
-            .attr('r', svg => svg.width / 2)
+            .attr('r', svg => Math.min(svg.width / 2, svg.height / 2))
             .attr('fill', () => pickHex(vertEl.colorElement, color1, color2))
 
           matrixSelectionUpperSvg[vValue][hValue].attr('isEmpty', 'false')
@@ -495,9 +495,9 @@
           for (let v=0; v<maxCellHeight; v++) {
             // Create the body of the element on each row of the cell
             matrixSelectionMiddleSvg[v][hValue].append('rect')
-              .attr('x', svg => svg.x)
+              .attr('x', svg => svg.x + (svg.width - Math.min(svg.width, svg.height))/2)
               .attr('y', svg => svg.y)
-              .attr('width', svg => svg.width)
+              .attr('width', svg => Math.min(svg.width, svg.height))
               .attr('height', svg => svg.height + 3)
               .style('fill', () => pickHex(vertEl.colorElement, color1, color2))
 
@@ -526,16 +526,16 @@
 
           // Create top of element
           matrixSelectionLowerSvg[0][hValue].append('rect')
-            .attr('x', svg => svg.x)
+            .attr('x', svg => svg.x + (svg.width - Math.min(svg.width, svg.height))/2)
             .attr('y', svg => svg.y)
-            .attr('width', svg => svg.width)
+            .attr('width', svg => Math.min(svg.width, svg.height))
             .attr('height', svg => svg.height / 2)
             .style('fill', () => pickHex(vertEl.colorElement, color1, color2))
 
           matrixSelectionLowerSvg[0][hValue].append('circle')
             .attr('cx', svg => svg.x + svg.width / 2)
             .attr('cy', svg => svg.y + svg.height / 2)
-            .attr('r', svg => svg.width / 2)
+            .attr('r', svg => Math.min(svg.width / 2, svg.height / 2))
             .attr('fill', () => pickHex(vertEl.colorElement, color1, color2))
 
           matrixSelectionLowerSvg[0][hValue].attr('isEmpty', 'false')
