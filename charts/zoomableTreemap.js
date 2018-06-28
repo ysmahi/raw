@@ -104,6 +104,8 @@
           return '#ff9933'
         })
         .style("fill-opacity", .7)
+        .style('stroke', 'white')
+        .style('stroke-width', '2px')
         .on("mouseover", function () {
           d3.select(this).style("fill-opacity", 1);
         })
@@ -138,51 +140,47 @@
         .append("rect")
         .attr("class", "child")
         .style("stroke-width", "2px")
+        .style("stroke", "white")
         .call(rect);
 
       // Create and customize parent rectangles
       g.append("rect")
         .attr("class", "parent")
-        .call(rect)
-        .style("fill", '#3399ff')
-        .style("fill-opacity", .5)
-        .on("mouseover", function () {
-          if (d.depth !== treeDepth - 1) {
+        .on("mouseover", function (d) {
+          if (d.depth !== treeDepth) {
             d3.select(this).style("fill-opacity", 1);
           }
         })
-        .on("mouseout", function () {
-          if (d.depth !== treeDepth - 1) {
+        .on("mouseout", function (d) {
+          if (d.depth !== treeDepth) {
             d3.select(this).style("fill-opacity", .5);
           }
         })
+        .call(rect)
+        .style("fill", '#3399ff')
+        .style("fill-opacity", .5)
+        .style("stroke", 'white')
+        .style("stroke-width", '2px')
         .append("title")
         .text(function (d){
           return name(d);
         });
 
-      /* Adding a foreign object instead of a text object, allows for text wrapping */
-      g.append("foreignObject")
-        .call(rect)
-        .attr("class", "foreignobj")
-        .append("xhtml:div")
-        .attr("title", function(d) {
-          return name(d);
-        })
-        .html(function (d) {
-          return '' +
-            '<p class="title">' + name(d) + '</p>';
-        })
+        g.append('svg')
+        .attr('class', 'foreignobj')
+        .append('text')
+        .attr('x', d => d.x0)
+        .attr('y', d => d.y0)
+        .attr('dy', '0.75em')
+        .text(d => d.data.name)
         .attr("class", "textdiv"); //textdiv class allows us to style the text easily with CSS
 
-      // Create rectangle for all children who have no children to put inside elements
-      console.log('a', d)
-      if (d.depth === treeDepth - 1 && !(insideElementsNames == null)) {
-        console.log('b', d)
-
-        // Create all inside Elements rectangle
+        // Create rectangle for all children who have no children to put inside elements
+        console.log('a', d)
+        if (d.depth === treeDepth - 1 && !(insideElementsNames == null)) {
+          console.log('b', d)
         let selectionInsideElements = g1.selectAll("g")
-          .insert('g', '.foreignObject')
+          .insert('g', 'foreignObject')
           .data(function (d) {
             return d.children
           })
@@ -214,6 +212,7 @@
           .style("fill", function (d) {
             return d.colorInsideElement
           })
+          .style('stroke', 'white')
 
         selectionRectInsideElements.append("text")
           .text(function (d) {
