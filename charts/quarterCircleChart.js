@@ -358,9 +358,9 @@
       .text(el => el.nameElement)
       .attr('x', el => el.x + (el.sizeElement + 0.1) * radiusCircleElement)
       .attr('y', el => el.y)
-      .attr('dy', '.75em')
+      .attr('dy', '.1em')
       .attr('text-anchor', 'left')
-      .attr('alignment-baseline', 'bottom')
+      .attr('alignment-baseline', 'middle')
       .attr('class', 'labelCircle')
       .attr('transform', 'translate(0, 0)')
 
