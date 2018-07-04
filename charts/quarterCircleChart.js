@@ -337,11 +337,16 @@
 
     for (var i = 0; i < 200; ++i) simulation.tick()
 
-    /* Draw dataset elements to the graph on the arcs */
+    /* Draw dataset elements to the graph on the arcs and make them draggable */
     // Create color domain
     colors.domain(nodesElements, d => {
       return d.colorElement
     })
+
+    let drag = d3.drag()
+      .on("start", dragstarted)
+      .on("drag", dragged)
+      .on("end", dragended)
 
     let elementSpace = arcsSpace.selectAll('.elementSpace')
       .data(nodesElements)
@@ -353,16 +358,36 @@
       .attr("cx", d => d.x)
       .attr("cy", d => d.y)
       .style("fill", d => colors() ? colors()(d.colorElement) : "grey")
+      .call(drag)
 
     elementSpace.append('text')
       .text(el => el.nameElement)
-      .attr('x', el => el.x + (el.sizeElement + 0.1) * radiusCircleElement)
+      .attr('x', el => el.x + (el.sizeElement + 0.3) * radiusCircleElement)
       .attr('y', el => el.y)
       .attr('dy', '.1em')
       .attr('text-anchor', 'left')
       .attr('alignment-baseline', 'middle')
       .attr('class', 'labelCircle')
       .attr('transform', 'translate(0, 0)')
+      .style('pointer-events', 'auto')
+      .call(drag)
+
+      // Implementation of drag
+      function dragstarted(d) {
+      d3.select(this).raise().classed("active", true);
+    }
+
+    function dragged(d) {
+      d3.select(this)
+        .attr("cx", d.x = d3.event.x)
+        .attr("cy", d.y = d3.event.y)
+        .attr("x", d.x = d3.event.x)
+        .attr("y", d.y = d3.event.y)
+    }
+
+    function dragended(d) {
+      d3.select(this).classed("active", false);
+    }
 
     // Avoid label overlaping
     arrangeLabels('.labelCircle')
