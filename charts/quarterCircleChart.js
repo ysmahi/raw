@@ -23,7 +23,7 @@
 
   let dimColorElements = model.dimension()
     .title('Color of Elements')
-    .types(Number)
+    .types(Number, String)
 
   /* Map function */
   let nameDimensions = {}
@@ -64,6 +64,9 @@
     .title('Height')
     .defaultValue(900)
 
+  let colors  = chart.color()
+    .title('Color scale')
+
   let margin = chart.number()
     .title('Margin')
     .defaultValue(10)
@@ -80,8 +83,7 @@
     let nameDimY = nameDimensions.nameDimY
     let nameDimSizeElements = nameDimensions.nameDimSizeElements
     let nameDimColorElements = nameDimensions.nameDimColorElements
-    let colorGood = {red: 0, green: 255, blue: 0}
-    let colorBad = {red: 255, green: 0, blue: 0}
+
     // Name of arcs
     let nameQuarterArcs = ['Leaders', 'Strong Performers', 'Contenders', 'Challengers']
 
@@ -321,7 +323,7 @@
         y: nodeY,
         nameElement: node[dimNameElements],
         sizeElement: (nameDimSizeElements)?parseFloat(node[dimSizeElements]):0.5,
-        colorElement: (nameDimColorElements)?pickHex(node[dimColorElements], colorGood, colorBad):'grey'
+        colorElement: (nameDimColorElements)?node[dimColorElements]:0.5
       };
     });
 
@@ -336,6 +338,11 @@
     for (var i = 0; i < 200; ++i) simulation.tick()
 
     /* Draw dataset elements to the graph on the arcs */
+    // Create color domain
+    colors.domain(nodesElements, d => {
+      return d.colorElement
+    })
+
     let elementSpace = arcsSpace.selectAll('.elementSpace')
       .data(nodesElements)
       .enter().append('g')
@@ -345,7 +352,7 @@
       .attr("r", d => (d.sizeElement + 0.1) * radiusCircleElement)
       .attr("cx", d => d.x)
       .attr("cy", d => d.y)
-      .style("fill", d => d.colorElement)
+      .style("fill", d => colors() ? colors()(d.colorElement) : "grey")
 
     elementSpace.append('text')
       .text(el => el.nameElement)
