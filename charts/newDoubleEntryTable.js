@@ -10,22 +10,31 @@
     .title('Name Rows')
     .types(String)
 
-  let dimElementInsideRaw = model.dimension()
-    .title('Elements inside cells')
+  let dimNameElements = model.dimension()
+    .title('Name of Elements')
     .types(String)
 
-  let colorElements = model.dimension()
+  let dimColorElements = model.dimension()
     .title('Color of Elements')
     .types(String, Number)
 
   /* Map function */
   model.map(data => {
-    return data.map(el => {
+    return data.map((el, i) => {
+      if (i === 0) {
+        nameDimensions = {
+          nameDimNameElements: dimNameElements()[0],
+          nameColumnRaw: dimColumnRaw()[0],
+          nameDimRowRaw: dimRowRaw()[0],
+          nameDimColorElements: (dimColorElements())?dimColorElements()[0]:false
+        }
+      }
+
       return {
         dimColumn: el[dimColumnRaw()],
         dimRow: el[dimRowRaw()],
-        dimElementInside: el[dimElementInsideRaw()],
-        colorElement: colorElements()?el[colorElements()]:0.5
+        dimElementInside: el[dimNameElements()],
+        dimColorElements: el[dimColorElements()]
       }
     })
   })
@@ -70,8 +79,15 @@
     let dimColumn = 'dimColumn'
     let dimRow = 'dimRow'
     let dimElementInside = 'dimElementInside'
+    let dimColorElements = 'dimColorElements'
+    let nameColumnRaw = nameDimensions.nameColumnRaw
+    let nameDimRowRaw = nameDimensions.nameDimRowRaw
+    let nameDimColorElements = nameDimensions.nameDimColorElements
     let color1 = {red: 0, green: 153, blue: 51}
     let color2 = {red: 204, green: 0, blue: 204}
+
+    // Create color domain
+    colors.domain(data, el => el[dimColorElements])
 
     let margin = {top: 30, right: 0, bottom: 20, left: 0},
     graphWidth =  +rawWidth() - 25,
@@ -305,13 +321,16 @@
       let verticalElementsData = []
       let singleElementsData = dataElements.filter(el => namesDataMultiple.indexOf(el[nameDimElementInside]) === -1)
 
+      let colorElement = ''
+
       namesDataMultiple.forEach(nameInsideElement => {
         let rowsData = []
         let rows = []
-        data.filter(item => item[nameDimElementInside] === nameInsideElement)
+        dataElements.filter(item => item[nameDimElementInside] === nameInsideElement)
           .forEach(el => {
             rows.push(el[nameDimRow])
             rowsData.push(el)
+            colorElement = (nameDimColorElements)?el[dimColorElements]:0.5
           })
 
         uniqueRowsName = rows.filter((v, i, a) => a.indexOf(v) === i)
@@ -340,7 +359,8 @@
                   horizontalElementsData.push({
                     nameInsideElement: nameInsideElement,
                     columnsName: cs,
-                    rowName: rowName
+                    rowName: rowName,
+                    dimColorElements: colorElement
                   })
                 }
                 else {
@@ -348,6 +368,7 @@
                   dataElement[nameDimElementInside] = nameInsideElement
                   dataElement[nameDimColumn] = cs[0]
                   dataElement[nameDimRow] = rowName
+                  dataElement[dimColorElements] = colorElement
                   singleElementsData.push(dataElement)
                 }
                 cs = [nameUniqueCols[l]]
@@ -356,6 +377,7 @@
                   dataElement[nameDimElementInside] = nameInsideElement
                   dataElement[nameDimColumn] = cs[0]
                   dataElement[nameDimRow] = rowName
+                  dataElement[dimColorElements] = colorElement
                   singleElementsData.push(dataElement)
                 }
               }
@@ -365,7 +387,8 @@
                   horizontalElementsData.push({
                     nameInsideElement: nameInsideElement,
                     columnsName: cs,
-                    rowName: rowName
+                    rowName: rowName,
+                    dimColorElements: colorElement
                   })
                 }
               }
@@ -391,7 +414,8 @@
                     verticalElementsData.push({
                       nameInsideElement: nameInsideElement,
                       columnName: nameCol,
-                      rowsName: rs
+                      rowsName: rs,
+                      dimColorElements: colorElement
                     })
                   }
                   else {
@@ -399,6 +423,7 @@
                     dataElement[nameDimElementInside] = nameInsideElement
                     dataElement[nameDimColumn] = nameCol
                     dataElement[nameDimRow] = rs[0]
+                    dataElement[dimColorElements] = colorElement
 
                     // Check if element already in singleElementsData
                     let stringSingElData = singleElementsData.map(el => JSON.stringify(el))
@@ -412,6 +437,7 @@
                     dataElement[nameDimElementInside] = nameInsideElement
                     dataElement[nameDimColumn] = nameCol
                     dataElement[nameDimRow] = rs[0]
+                    dataElement[dimColorElements] = colorElement
 
                     // Check if element already in singleElementsData
                     let stringSingElData = singleElementsData.map(el => JSON.stringify(el))
@@ -426,7 +452,8 @@
                     verticalElementsData.push({
                       nameInsideElement: nameInsideElement,
                       columnName: nameCol,
-                      rowsName: rs
+                      rowsName: rs,
+                      dimColorElements: colorElement
                     })
                   }
                 }
@@ -439,6 +466,7 @@
               dataElement[nameDimElementInside] = nameInsideElement
               dataElement[nameDimColumn] = nameCol
               dataElement[nameDimRow] = r[0]
+              dataElement[dimColorElements] = colorElement
               singleElementsData.push(dataElement)
             }
           }
@@ -512,7 +540,7 @@
           size: [widthElement, heightElement],
           radius: radiusElement,
           nameInsideElement: (elementIsSingle)?element[dimElementInside]:element.nameInsideElement,
-          colorElement: (elementIsSingle)?'skyblue':(elementIsVertical)?'red':'green'
+          colorElement: (nameDimColorElements)?element[dimColorElements]:0.5
         })
 
         // smallMove is used so that no elements are exactly at the same position so that tick() works
@@ -560,7 +588,7 @@
         elementSelection.append((bigElements)?'rect':'circle')
           .attr((bigElements)?'x':'cx', element => element.x)
           .attr((bigElements)?'y':'cy', element => element.y)
-          .style('fill', element => element.colorElement)
+          .style('fill', element => colors() ? colors()(element.colorElement) : "grey")
           .attr('class', element => element.nameInsideElement)
           .style('stroke', 'black')
           .call((bigElements)?dragRectangle:dragCircle)
