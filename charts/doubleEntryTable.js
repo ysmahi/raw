@@ -21,11 +21,13 @@
   /* Map function */
   model.map(data => {
     return data.map(el => {
+      console.log('colorEle', (colorElements()))
+      console.log(colorElements()?el[colorElements()]:0.5)
       return {
         dimColumn: el[dimColumnRaw()],
         dimRow: el[dimRowRaw()],
         dimElementInside: el[dimElementInsideRaw()],
-        colorElement: el[colorElements()]
+        colorElement: colorElements()?el[colorElements()]:0.5
       }
     })
   })
@@ -47,6 +49,9 @@
   let margin = chart.number()
     .title('Margin')
     .defaultValue(10)
+
+  let colors  = chart.color()
+    .title('Color scale')
 
   let chartOptions = {
     spot_radius : 30,
@@ -96,13 +101,14 @@
       .filter((v, i, a) => !(a.indexOf(v) === i))
       .filter((v, i, a) => a.indexOf(v) === i)
 
-    if (typeof data[0].colorElement === 'string') {
+    /* if (typeof data[0].colorElement === 'string') {
       let uniqueStringColors = data.map(el => el.colorElement).filter((v, i, a) => a.indexOf(v) === i)
       data = data.map(el => {
         el.colorElement = uniqueStringColors.indexOf(el.colorElement)/uniqueStringColors.length
         return el;
       })
-    }
+    } */
+
 
     // Separation of vertical and horizontal elements
     let horizontalElementsData = []
@@ -274,6 +280,9 @@
     console.log('horiz', horizontalElementsData)
     console.log('vert', verticalElementsData)
     console.log('single', singleElementsData)
+
+    // Create color domain
+    colors.domain(horizontalElementsData.concat(verticalElementsData, singleElementsData), el => el.colorElement)
 
     // Create position data for grid
     let gridData = createGridData(rowsName.length + 1,
@@ -447,7 +456,7 @@
       let vValue = 0
       let hValue = 0
       vertEl.rowsName.forEach(function (row, i, allRows) {
-      	let iMiddle = Math.trunc(allRows.length/2)
+        let iMiddle = Math.trunc(allRows.length/2)
         if (i === 0) {
           // Create top of element in the upper row
           let matrixSelectionUpperSvg = getCellMatrix(grid,
@@ -472,13 +481,13 @@
             .attr('y', svg => svg.y + svg.height / 2)
             .attr('width', svg => Math.min(svg.width, svg.height))
             .attr('height', svg => svg.height / 2 + 3)
-            .style('fill', (à) => pickHex(vertEl.colorElement, color1, color2))
+            .style('fill', colors() ? colors()(vertEl.colorElement) : "grey")
 
           matrixSelectionUpperSvg[vValue][hValue].append('circle')
             .attr('cx', svg => svg.x + svg.width / 2)
             .attr('cy', svg => svg.y + svg.height / 2)
             .attr('r', svg => Math.min(svg.width / 2, svg.height / 2))
-            .attr('fill', () => pickHex(vertEl.colorElement, color1, color2))
+            .attr('fill', colors() ? colors()(vertEl.colorElement) : "grey")
 
           matrixSelectionUpperSvg[vValue][hValue].attr('isEmpty', 'false')
         }
@@ -499,21 +508,21 @@
               .attr('y', svg => svg.y)
               .attr('width', svg => Math.min(svg.width, svg.height))
               .attr('height', svg => svg.height + 3)
-              .style('fill', () => pickHex(vertEl.colorElement, color1, color2))
+              .style('fill', colors() ? colors()(vertEl.colorElement) : "grey")
 
             matrixSelectionMiddleSvg[v][hValue].attr('isEmpty', 'false')
 
             if (v === vMiddle && i === iMiddle) {
-            // Append name of vertical element
-            matrixSelectionMiddleSvg[v][hValue].append('text')
-              .attr('x', svg => svg.x + svg.width / 2)
-              .attr('y', svg => {
-                return (allRows.length % 2 === 0) ? svg.y : (maxCellHeight % 2 === 0) ? svg.y : (svg.y + svg.height / 2)
-              })
-              .attr('text-anchor', 'middle')
-              .attr('alignment-baseline', 'central')
-              .text(vertEl.nameInsideElement)
-          	}
+              // Append name of vertical element
+              matrixSelectionMiddleSvg[v][hValue].append('text')
+                .attr('x', svg => svg.x + svg.width / 2)
+                .attr('y', svg => {
+                  return (allRows.length % 2 === 0) ? svg.y : (maxCellHeight % 2 === 0) ? svg.y : (svg.y + svg.height / 2)
+                })
+                .attr('text-anchor', 'middle')
+                .attr('alignment-baseline', 'central')
+                .text(vertEl.nameInsideElement)
+            }
           }
         }
 
@@ -530,13 +539,14 @@
             .attr('y', svg => svg.y)
             .attr('width', svg => Math.min(svg.width, svg.height))
             .attr('height', svg => svg.height / 2)
-            .style('fill', () => pickHex(vertEl.colorElement, color1, color2))
+            // TODO : color elment undefined here
+            .style('fill', colors() ? colors()(vertEl.colorElement) : "grey")
 
           matrixSelectionLowerSvg[0][hValue].append('circle')
             .attr('cx', svg => svg.x + svg.width / 2)
             .attr('cy', svg => svg.y + svg.height / 2)
             .attr('r', svg => Math.min(svg.width / 2, svg.height / 2))
-            .attr('fill', () => pickHex(vertEl.colorElement, color1, color2))
+            .attr('fill', colors() ? colors()(vertEl.colorElement) : "grey")
 
           matrixSelectionLowerSvg[0][hValue].attr('isEmpty', 'false')
 
@@ -558,7 +568,7 @@
       let vValue = 0
       let hValue = 0
       horizEl.columnsName.forEach(function (col, i, allColumns) {
-      	let iMiddle = Math.trunc(allColumns.length/2)
+        let iMiddle = Math.trunc(allColumns.length/2)
         if (i === 0) {
           // Create left of element in the left column
           let matrixSelectionLeftSvg = getCellMatrix(grid,
@@ -583,7 +593,7 @@
             .attr('y', svg => svg.y)
             .attr('width', svg => svg.width + 3)
             .attr('height', svg => svg.height)
-            .style('fill', () => pickHex(horizEl.colorElement, color1, color2))
+            .style('fill', colors() ? colors()(horizEl.colorElement) : "grey")
 
           matrixSelectionLeftSvg[vValue][hValue].attr('isEmpty', 'false')
         }
@@ -604,21 +614,21 @@
               .attr('y', svg => svg.y)
               .attr('width', svg => svg.width + 3)
               .attr('height', svg => svg.height)
-              .style('fill', () => pickHex(horizEl.colorElement, color1, color2))
+              .style('fill', colors() ? colors()(horizEl.colorElement) : "grey")
               .style('opacity', () => (matrixSelectionMiddleSvg[vValue][h].attr('isEmpty') === 'false')?0.5:1)
 
             matrixSelectionMiddleSvg[vValue][h].attr('isEmpty', 'false')
-        	// Append name of horizontal element
-	          if (i === iMiddle && h === hMiddle) {
-	            matrixSelectionMiddleSvg[vValue][h].append('text')
-	              .attr('x', svg => {
-	                return (allColumns.length % 2 === 0) ? svg.x : (maxCellWidth % 2 === 0) ? svg.x : (svg.x + svg.width / 2)
-	              })
-	              .attr('y', svg => svg.y + svg.height / 2)
-	              .attr('text-anchor', 'middle')
-	              .attr('alignment-baseline', 'central')
-	              .text(horizEl.nameInsideElement)
-	          }
+            // Append name of horizontal element
+            if (i === iMiddle && h === hMiddle) {
+              matrixSelectionMiddleSvg[vValue][h].append('text')
+                .attr('x', svg => {
+                  return (allColumns.length % 2 === 0) ? svg.x : (maxCellWidth % 2 === 0) ? svg.x : (svg.x + svg.width / 2)
+                })
+                .attr('y', svg => svg.y + svg.height / 2)
+                .attr('text-anchor', 'middle')
+                .attr('alignment-baseline', 'central')
+                .text(horizEl.nameInsideElement)
+            }
 
           }
 
@@ -637,7 +647,7 @@
             .attr('y', svg => svg.y)
             .attr('width', svg => svg.width)
             .attr('height', svg => svg.height)
-            .style('fill', () => pickHex(horizEl.colorElement, color1, color2))
+            .style('fill', colors() ? colors()(horizEl.colorElement) : "grey")
             .style('opacity', () => (matrixSelectionRightSvg[vValue][0].attr('isEmpty') === 'false')?0.5:1)
 
           matrixSelectionRightSvg[vValue][0].attr('isEmpty', 'false')
@@ -684,7 +694,7 @@
         .attr('cx', svg => svg.x + svg.width/2)
         .attr('cy', svg => svg.y + svg.height/2)
         .attr('r', svg => Math.min(svg.height/2, svg.width/2))
-        .attr('fill', () => pickHex(element.colorElement, color1, color2))
+        .attr('fill', colors() ? colors()(element.colorElement) : "grey")
 
       matrixSelectionSvg[iRow][jCol].append('text')
         .attr('x', svg => svg.x + svg.width/2)
