@@ -1,6 +1,7 @@
 (function(){
 
-  let tree = raw.models.customTree();
+  let tree = raw.models.custom
+  Tree();
 
   let chart = raw.chart()
     .title('Zoomable Treemap')
