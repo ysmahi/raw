@@ -98,6 +98,7 @@
     let dimElementInside = 'dimElementInside'
     let dimColorElements = 'dimColorElements'
     let nameDimRowRaw = nameDimensions.nameDimRowRaw
+    let dimYearData = 'dimYearData'
     let nameDimColorElements = nameDimensions.nameDimColorElements
     let color1 = {red: 0, green: 153, blue: 51}
     let color2 = {red: 204, green: 0, blue: 204}
@@ -137,7 +138,8 @@
       return {nameInsideElement: el[dimElementInside],
         columnsName : [el[dimColumn]],
         rowName: el[dimRow],
-        dimColorElements: el[dimColorElements]}
+        dimColorElements: el[dimColorElements],
+        yearsData: [el[dimYearData]]}
     }))
 
     console.log('horiz', horizontalElementsData)
@@ -211,22 +213,22 @@
         if (rectIsAnInsideRect) return '' + rect.rowName + rect.columnName
         else return;
       })
-      .attr("x", function(d) { return d.x; })
-      .attr("y", function(d) { return d.y; })
-      .attr("width", function(d) { return d.width; })
-      .attr("height", function(d) { return d.height; })
+      .attr("x", function(rect) { return rect.x; })
+      .attr("y", function(rect) { return rect.y; })
+      .attr("width", function(rect) { return rect.width; })
+      .attr("height", function(rect) { return rect.height; })
 
     // Adjust style of table
     d3.selectAll('.rowNameRect')
-      .style('fill', '#668cff')
+      .style('fill', '#49648c')
       .style('stroke', "#ffffff")
 
     d3.selectAll('.columnNameRect')
-      .style('fill', '#668cff')
-      .style('stroke', "#ffffff")
+      .style('fill', '#fff6de')
+      .style('stroke', "#b1c0d6")
 
     d3.selectAll('.insideTableRect')
-      .style('fill', '#d9d9d9')
+      .style('fill', 'transparent')
       .style('stroke', "#ffffff")
 
     d3.selectAll('.firstRect')
@@ -239,7 +241,6 @@
       .attr('y', cell => cell.y + cell.height/2)
       .attr("dy", ".35em")
       .attr('text-anchor', 'middle')
-      .attr('alignment-baseline', 'central')
       .style('font-weight', 'bold')
       .text(cell => {
         if (cell.hasOwnProperty('name')) {
@@ -263,15 +264,19 @@
       let dataPos = [];
       let xpos = 1; //starting xpos and ypos at 1 so the stroke will show when we make the grid below
       let ypos = 1;
-      let width = cellWidth;
-      let height = cellHeight;
+      let width = cellWidth
+      let height
 
       // iterate for rows
       for (let row = 0; row < numberRow; row++) {
         dataPos.push( [] );
+        let RowIsFirstRow = (row === 0)
+        height = (row === 0)?cellHeight / 10:cellHeight
 
         // iterate for cells/columns inside rows
         for (let column = 0; column < numberColumn; column++) {
+          width = (column === 0)?
+
           dataPos[row].push({
             x: xpos,
             y: ypos,
@@ -284,7 +289,7 @@
         // reset the x position after a row is complete
         xpos = 1;
         // increment the y position for the next row. Move it down by height (height variable)
-        ypos += height;
+        ypos += height + height / 30;
       }
       return dataPos;
     }
@@ -355,9 +360,11 @@
 
         uniqueRowsName.forEach(rowName => {
           let cols = []
+          let yearsData = {}
           rowsData.filter(data => data[nameDimRow] === rowName)
             .forEach(el => {
               cols.push(el[nameDimColumn])
+              yearsData[el[nameDimColumn]] =  el[dimYearData]
             })
           let nameUniqueCols = cols.filter((v, i, a) => a.indexOf(v) === i)
             .sort((a, b) => {
@@ -375,7 +382,8 @@
                     nameInsideElement: nameInsideElement,
                     columnsName: cs,
                     rowName: rowName,
-                    dimColorElements: colorElement
+                    dimColorElements: colorElement,
+                    yearsData: yearsData
                   })
                 }
                 else {
@@ -403,7 +411,8 @@
                     nameInsideElement: nameInsideElement,
                     columnsName: cs,
                     rowName: rowName,
-                    dimColorElements: colorElement
+                    dimColorElements: colorElement,
+                    yearsData: yearsData
                   })
                 }
               }
@@ -515,7 +524,8 @@
           y: yBeginning + smallMove,
           size: [widthElement, heightElement],
           nameInsideElement: element.nameInsideElement,
-          colorElement: (nameDimColorElements)?element[dimColorElements]:0.5
+          colorElement: (nameDimColorElements)?element[dimColorElements]:0.5,
+          yearsData: element.yearsData
         })
 
         // smallMove is used so that no elements are exactly at the same position so that tick() works
@@ -543,8 +553,8 @@
         .on("end", dragended)
 
       dataElements.forEach(dataElement => {
-        dataElement.xCenter = dataElement.x + dataElement.size[0] / 2
-        dataElement.yCenter = dataElement.y + dataElement.size[1] / 2
+        dataElement.xBeginning = dataElement.x + 10
+        dataElement.yBeginning = dataElement.y + 10
 
         let elementSelection = elementsSpace.selectAll('#' + dataElement.nameInsideElement)
           .data([dataElement])
@@ -556,7 +566,9 @@
         elementSelection.append('rect')
           .attr('x', element => element.x)
           .attr('y', element => element.y)
-          .style('fill', element => colors() ? colors()(element.colorElement) : "grey")
+          .attr('width', element => element.size[0])
+          .attr('height', element => element.size[1])
+          .style('fill', element => colors() ? colors()(element.colorElement) : '#d8dfeb')
           .attr('class', element => element.nameInsideElement)
           .style('stroke', 'black')
           .call(dragRectangle)
@@ -564,16 +576,23 @@
         elementSelection.append('text')
           .attr('dy', '.3em')
           .text(element => element.nameInsideElement)
-          .attr('text-anchor', 'middle')
+          .attr('text-anchor', 'left')
+          .attr('x', element => element.xBeginning)
+          .attr('y', element => element.yBeginning)
 
-        elementSelection.select('rect')
-          .attr('width', element => element.size[0])
-          .attr('height', element => element.size[1])
+        let yearsData = dataElement.yearsData
+        let tesst = Object.keys(yearsData)
+          tesst.sort((a, b) => parseInt(a) - parseInt(b))
+        let firstYearOfData = parseInt(Object.keys(yearsData)[0])
 
-        elementSelection.select('text')
-          .attr('x', element => element.xCenter)
-          .attr('y', element => element.yCenter)
-
+        for (let year = firstYearOfData; year < firstYearOfData + Object.keys(yearsData).length; year++) {
+          elementSelection.append('text')
+            .attr('dy', '.3em')
+            .text((parseInt(yearsData[year]))?yearsData[year] + ' M€':yearsData[year])
+            .attr('text-anchor', 'left')
+            .attr('x', element => element.xBeginning + (year - firstYearOfData + 0.75) * element.size[0] / Object.keys(yearsData).length - yearsData[year].length)
+            .attr('y', element => element.yBeginning + element.size[1] - 20)
+        }
       })
     }
 
@@ -587,18 +606,8 @@
         .attr("y", d.y = d3.event.y)
 
       d3.select(this.parentNode).select('text')
-        .attr("x", d.xCenter = d3.event.x + d.size[0] / 2)
-        .attr("y", d.yCenter = d3.event.y + d.size[1] / 2)
-    }
-
-    function circleDragged(d) {
-      d3.select(this.parentNode).select('circle')
-        .attr("cx", d.x = d3.event.x)
-        .attr("cy", d.y = d3.event.y)
-
-      d3.select(this.parentNode).select('text')
-        .attr("x", d.x = d3.event.x)
-        .attr("y", d.y = d3.event.y)
+        .attr("x", d.xBeginning = d3.event.x + 10)
+        .attr("y", d.yBeginning = d3.event.y + 10)
     }
 
     function dragended(d) {
@@ -609,7 +618,7 @@
      * and a force simulation to ensure each element is not out of a row or a column */
     function moveToRightPlace (elementsData) {
 
-      let collisionForce = rectCollide().size(rectangle => [rectangle.size[0], rectangle.size[1]])
+      let collisionForce = rectCollide().size(rectangle => [rectangle.size[0], rectangle.size[1] + 3]) // [width, height]
 
       let simulation = d3.forceSimulation(elementsData)
         .force("x", d3.forceX(function(element) { return element.idealX }))
