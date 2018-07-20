@@ -166,6 +166,7 @@
     console.log('gridData', gridData)
 
     /* Creation of the underneath grid */
+    //drawGrid (divGridGraph, gridData)
     divGridGraph.append('g')
       .attr('id', 'grid')
 
@@ -204,7 +205,6 @@
           cellClass = (i === 0)?'firstRect':'columnNameRect'
           rowIndex = (i === columnsName.length  )?(rowIndex + 1):rowIndex
         }
-
         return cellClass
       })
       .attr('id', rect =>{
@@ -220,12 +220,12 @@
 
     // Adjust style of table
     d3.selectAll('.rowNameRect')
-      .style('fill', '#49648c')
+      .style('fill', '#000099')
       .style('stroke', "#ffffff")
 
     d3.selectAll('.columnNameRect')
-      .style('fill', '#fff6de')
-      .style('stroke', "#b1c0d6")
+      .style('fill', '#f8e6de')
+      .style('stroke', "#000099")
 
     d3.selectAll('.insideTableRect')
       .style('fill', 'transparent')
@@ -236,6 +236,7 @@
       .style('filter', 'alpha(opacity=0)')
 
     // Append name of rows and columns
+    rowIndex = 0
     cell.append('text')
       .attr('x', cell => cell.x + cell.width/2)
       .attr('y', cell => cell.y + cell.height/2)
@@ -246,6 +247,20 @@
         if (cell.hasOwnProperty('name')) {
           return cell.name
         }
+      })
+      .style('fill', (cell, indexCell) => {
+        let nameColor
+        if (indexCell%(columnsName.length + 1) === 0) {
+          // Cell is row name
+          nameColor = '#ffffff'
+        }
+
+        if (rowIndex === 0) {
+          // Cell is column name
+          nameColor = '#000099'
+          rowIndex = (indexCell === columnsName.length  )?(rowIndex + 1):rowIndex
+        }
+        return nameColor
       })
 
     /* Create superimposed svg elements */
@@ -275,7 +290,6 @@
 
         // iterate for cells/columns inside rows
         for (let column = 0; column < numberColumn; column++) {
-          width = (column === 0)?
 
           dataPos[row].push({
             x: xpos,
@@ -309,23 +323,6 @@
       })
 
       return Math.max(...matrixHorizEl.map(el => Math.max(...el)))
-    }
-
-    /* Calculate cell width depending on the maximum number of vertical elements in a cell */
-    function getMaxVerticalElements (verticalElementsData, rowsName, columnsName) {
-      let matrixVertEl = new Array(rowsName.length).fill().map(() => {
-        return new Array(columnsName.length)
-          .fill()
-          .map(() => [0])
-      })
-
-      verticalElementsData.forEach(el => {
-        el.rowsName.forEach(rowName => {
-          matrixVertEl[rowsName.indexOf(rowName)][columnsName.indexOf(el.columnName)] = parseInt(matrixVertEl[rowsName.indexOf(rowName)][columnsName.indexOf(el.columnName)]) + 1
-        })
-      })
-
-      return Math.max(...matrixVertEl.map(el => Math.max(...el)))
     }
 
     /* Returns an array of elements data [dataVerticalElements, dataHorizontalElements, dataSingleElements]
@@ -513,7 +510,7 @@
         let xCellCenter = xBeginning + cellWidth / 2
         let yCellCenter = yBeginning + cellHeight / 2
 
-        let widthElement = xEnd - xBeginning + cellWidth - 20
+        let widthElement = xEnd - xBeginning + cellWidth - 40
 
         let heightElement = cellHeight / 3 - 10
 
@@ -568,10 +565,25 @@
           .attr('y', element => element.y)
           .attr('width', element => element.size[0])
           .attr('height', element => element.size[1])
-          .style('fill', element => colors() ? colors()(element.colorElement) : '#d8dfeb')
+          .style('fill', element => nameDimColorElements ? colors()(element.colorElement) : '#d8dfeb')
           .attr('class', element => element.nameInsideElement)
-          .style('stroke', 'black')
+          .style('stroke', 'transparent')
           .call(dragRectangle)
+
+        elementSelection.append('path')
+          .attr('d',element => {
+            let topArrowX = element.x + element.size[0]
+            let topArrowY = element.y
+            let middleArrowX = element.x + element.size[0] + 30
+            let middleArrowY = element.y + element.size[1] / 2
+            let bottomArrowX = element.x + element.size[0]
+            let bottomArrowY = element.y + element.size[1]
+            return 'M' + topArrowX + ' ' + topArrowY //Upper point of arrow
+            + ' L' + middleArrowX + ' ' + middleArrowY // Front point of arrow
+            + ' L' + bottomArrowX + ' ' + bottomArrowY // Bottom point
+            + ' Z' // Close path
+          })
+          .style('fill', '#d8dfeb')
 
         elementSelection.append('text')
           .attr('dy', '.3em')
@@ -579,6 +591,7 @@
           .attr('text-anchor', 'left')
           .attr('x', element => element.xBeginning)
           .attr('y', element => element.yBeginning)
+          .style('fill', '#000099')
 
         let yearsData = dataElement.yearsData
         let tesst = Object.keys(yearsData)
@@ -592,6 +605,7 @@
             .attr('text-anchor', 'left')
             .attr('x', element => element.xBeginning + (year - firstYearOfData + 0.75) * element.size[0] / Object.keys(yearsData).length - yearsData[year].length)
             .attr('y', element => element.yBeginning + element.size[1] - 20)
+            .style('fill', '#000099')
         }
       })
     }
