@@ -140,7 +140,7 @@
       return {nameInsideElement: el[dimElementInside],
         columnsName : [el[dimColumn]],
         rowName: el[dimRow],
-        dimColorElements: el[dimColorElements],
+        dimColorElements: (nameDimColorElements)?el[dimColorElements]:0.5,
         yearsData: yearsData}
     }))
 
@@ -265,8 +265,10 @@
         })
         .attr('id', rect =>{
           let rectIsAnInsideRect = (rect.rowName && rect.columnName)
+          let idInsideRect = '' + rect.rowName + rect.columnName
+          idInsideRect = idInsideRect.replace(/\s+/g, '')
 
-          if (rectIsAnInsideRect) return '' + rect.rowName + rect.columnName
+          if (rectIsAnInsideRect) return idInsideRect
           else return;
         })
         .attr("x", function(rect) { return rect.x; })
@@ -507,6 +509,7 @@
 
         // Select the cell where the element should have his first extremity
         let idCellBeginning = '#' + element.rowName + element.columnsName[0]
+        idCellBeginning = idCellBeginning.replace(/\s+/g, '')
 
         let cellBeginningData = getSelectionCellData(idCellBeginning)
         let xBeginning = cellBeginningData.x
@@ -514,6 +517,7 @@
 
         // Select the cell where the element should have his end extremity
         let idCellEnd = '#' + element.rowName + element.columnsName[element.columnsName.length - 1]
+        idCellEnd = idCellEnd.replace(/\s+/g, '')
 
         let cellEndData = getSelectionCellData(idCellEnd)
         let xEnd = cellEndData.x
@@ -521,18 +525,15 @@
         let cellWidth = cellEndData.width
         let cellHeight = cellEndData.height
 
-        let xCellCenter = xBeginning + cellWidth / 2
-        let yCellCenter = yBeginning + cellHeight / 2
-
         let widthElement = xEnd - xBeginning + cellWidth - 40
 
         let heightElement = elementHeight
 
         dataElements.push({
           idealX: xBeginning,
-          idealY: yBeginning,
+          idealY: yBeginning + 3,
           x: xBeginning,
-          y: yBeginning,
+          y: yBeginning + 3,
           size: [widthElement, heightElement],
           nameInsideElement: element.nameInsideElement,
           colorElement: (nameDimColorElements)?element[dimColorElements]:0.5,
@@ -650,9 +651,9 @@
       rowsName.forEach(row => {
         elementsToPlaceInRow = elementsData.filter(el => el.rowName === row)
         let elementsToPlaceInCell
-        // heightsAlreadyUsed is an object which keys are the indexes of the years of the roadmap and which keys are
+        // heightsAlreadyUsed is an array which indexes are the indexes of the years of the roadmap and which values are
         // arrays of already used heights for those years
-        let heightsAlreadyUsed = new Array(rowsName.length).fill().map(() => [])
+        let heightsAlreadyUsed = new Array(columnsName.length).fill().map(() => [])
 
         // For each column in a row check for elements
         columnsName.forEach((column, indexCol) => {
