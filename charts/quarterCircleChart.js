@@ -19,6 +19,8 @@
 
   let dimSizeElements = model.dimension()
     .title('Size of Elements')
+
+
     .types(Number)
 
   let dimColorElements = model.dimension()
