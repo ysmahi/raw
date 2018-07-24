@@ -111,7 +111,7 @@
       graphHeight = +rawHeight() - margin.top - margin.bottom
 
     selection
-      .attr("width", graphWidth + margin.left + margin.right + 'px')
+      .attr("width", graphWidth + margin.left + margin.right + 2 + 'px')
       .attr("height", graphHeight + margin.bottom + margin.top + 'px')
       .style("margin-left", -margin.left + "px")
       .style("margin.right", -margin.right + "px")
@@ -135,18 +135,28 @@
     let singleElementsData = separatedData[1]
 
     horizontalElementsData.push(...singleElementsData.map(el => {
+      let yearsData = {}
+      yearsData[el[dimColumn]] = el[dimYearData]
       return {nameInsideElement: el[dimElementInside],
         columnsName : [el[dimColumn]],
         rowName: el[dimRow],
         dimColorElements: el[dimColorElements],
-        yearsData: [el[dimYearData]]}
+        yearsData: yearsData}
     }))
 
     console.log('horiz', horizontalElementsData)
     console.log('single', singleElementsData)
 
+    /* Calculation of element height */
+    // Calculation of max horizontal elements in the same cell
+    let maxHorizontalElementsPerRow = maxElementsInRow(horizontalElementsData, rowsName, columnsName)
+    // let maxElementInCell = maxHorizontalElements
+    console.log('maxHorizElements', maxHorizontalElementsPerRow)
+
+    let elementHeight = graphHeight / ((rowsName.length + 1) * Math.max(...maxHorizontalElementsPerRow))
+
     // Create position data for grid
-    let gridData = createGridData(rowsName.length + 1, columnsName.length + 1, graphWidth / (columnsName.length + 1), graphHeight / (rowsName.length + 1))
+    let gridData = createGridData(rowsName.length + 1, columnsName.length + 1, graphWidth / (columnsName.length + 1), maxHorizontalElementsPerRow, elementHeight)
     // Append names of row and columns in data
     gridData[0].forEach((col, indexCol) => col.name = colNamesPlusEmpty[indexCol]) // name columns
     for(let i=1; i<gridData.length; i++) { // name rows
@@ -166,116 +176,16 @@
     console.log('gridData', gridData)
 
     /* Creation of the underneath grid */
-    //drawGrid (divGridGraph, gridData)
-    divGridGraph.append('g')
-      .attr('id', 'grid')
-
-    let grid = d3.select('#grid')
-      .append('g')
-      .attr("width", graphWidth + margin.left + margin.right + 'px')
-      .attr("height", graphHeight + margin.bottom + margin.top + 'px')
-      .style("margin-left", -margin.left + "px")
-      .style("margin.right", -margin.right + "px")
-
-    // Create g for each row
-    let row = grid.selectAll(".Row")
-      .data(gridData)
-      .enter()
-      .append("g")
-      .attr("class", "Row");
-
-    // Create all cells
-    let cell = row.selectAll(".Cell")
-      .data(function(row) { return row; })
-      .enter()
-      .append('g')
-      .attr('class', 'Cell')
-
-    // Create rectangles for cells
-    let rowIndex = 0
-    cell.append("rect")
-      .attr("class", (rect, i) => {
-        let cellClass = 'insideTableRect'
-        if (i%(columnsName.length + 1) === 0) {
-          // Cell is row name
-          cellClass = 'rowNameRect'
-        }
-        if (rowIndex === 0) {
-          // Cell is column name
-          cellClass = (i === 0)?'firstRect':'columnNameRect'
-          rowIndex = (i === columnsName.length  )?(rowIndex + 1):rowIndex
-        }
-        return cellClass
-      })
-      .attr('id', rect =>{
-        let rectIsAnInsideRect = (rect.rowName && rect.columnName)
-
-        if (rectIsAnInsideRect) return '' + rect.rowName + rect.columnName
-        else return;
-      })
-      .attr("x", function(rect) { return rect.x; })
-      .attr("y", function(rect) { return rect.y; })
-      .attr("width", function(rect) { return rect.width; })
-      .attr("height", function(rect) { return rect.height; })
-
-    // Adjust style of table
-    d3.selectAll('.rowNameRect')
-      .style('fill', '#000099')
-      .style('stroke', "#ffffff")
-
-    d3.selectAll('.columnNameRect')
-      .style('fill', '#f8e6de')
-      .style('stroke', "#000099")
-
-    d3.selectAll('.insideTableRect')
-      .style('fill', 'transparent')
-      .style('stroke', "#ffffff")
-
-    d3.selectAll('.firstRect')
-      .style('opacity', '0')
-      .style('filter', 'alpha(opacity=0)')
-
-    // Append name of rows and columns
-    rowIndex = 0
-    cell.append('text')
-      .attr('x', cell => cell.x + cell.width/2)
-      .attr('y', cell => cell.y + cell.height/2)
-      .attr("dy", ".35em")
-      .attr('text-anchor', 'middle')
-      .style('font-weight', 'bold')
-      .text(cell => {
-        if (cell.hasOwnProperty('name')) {
-          return cell.name
-        }
-      })
-      .style('fill', (cell, indexCell) => {
-        let nameColor
-        if (indexCell%(columnsName.length + 1) === 0) {
-          // Cell is row name
-          nameColor = '#ffffff'
-        }
-
-        if (rowIndex === 0) {
-          // Cell is column name
-          nameColor = '#000099'
-          rowIndex = (indexCell === columnsName.length  )?(rowIndex + 1):rowIndex
-        }
-        return nameColor
-      })
+    drawGrid (divGridGraph, gridData)
 
     /* Create superimposed svg elements */
-    // Calculation of max horizontal elements in the same cell
-    let maxHorizontalElements = getMaxHorizontalElements (horizontalElementsData, rowsName, columnsName)
-    let maxElementInCell = maxHorizontalElements
-
-    console.log('maxHorizElements', maxHorizontalElements)
-
     // Drawing of vertical elements and creating
-    draw(horizontalElementsData)
+    let gridSelection = d3.select('#grid')
+    draw(horizontalElementsData, gridSelection, elementHeight)
 
     // function that creates a grid
-// http://www.cagrimmett.com/til/2016/08/17/d3-lets-make-a-grid.html
-    function createGridData (numberRow, numberColumn, cellWidth, cellHeight) {
+    // http://www.cagrimmett.com/til/2016/08/17/d3-lets-make-a-grid.html
+    function createGridData (numberRow, numberColumn, cellWidth, arrayMaxElementPerRow, elementHeight) {
       let dataPos = [];
       let xpos = 1; //starting xpos and ypos at 1 so the stroke will show when we make the grid below
       let ypos = 1;
@@ -286,7 +196,7 @@
       for (let row = 0; row < numberRow; row++) {
         dataPos.push( [] );
         let RowIsFirstRow = (row === 0)
-        height = (row === 0)?cellHeight / 10:cellHeight
+        height = (row === 0)?elementHeight / 3:(arrayMaxElementPerRow[row - 1] + 0.5) * elementHeight
 
         // iterate for cells/columns inside rows
         for (let column = 0; column < numberColumn; column++) {
@@ -308,8 +218,112 @@
       return dataPos;
     }
 
-    /* Calculate cell height depending on the maximum number of horizontal elements in a cell */
-    function getMaxHorizontalElements (horizontalElementsData, rowsName, columnsName) {
+    /* Function to draw the grid
+    * selection is the d3 selection where the grid will be appended
+    * gridData is the grid data with the position and dimension of each cell
+    * See createGridData function*/
+    function drawGrid (selection, gridData) {
+      selection.append('g')
+        .attr('id', 'grid')
+
+      let grid = d3.select('#grid')
+        .append('g')
+        .attr("width", graphWidth + margin.left + margin.right + 'px')
+        .attr("height", graphHeight + margin.bottom + margin.top + 'px')
+        .style("margin-left", -margin.left + "px")
+        .style("margin.right", -margin.right + "px")
+
+      // Create g for each row
+      let row = grid.selectAll(".Row")
+        .data(gridData)
+        .enter()
+        .append("g")
+        .attr("class", "Row");
+
+      // Create all cells
+      let cell = row.selectAll(".Cell")
+        .data(function(row) { return row; })
+        .enter()
+        .append('g')
+        .attr('class', 'Cell')
+
+      // Create rectangles for cells
+      let rowIndex = 0
+      cell.append("rect")
+        .attr("class", (rect, i) => {
+          let cellClass = 'insideTableRect'
+          if (i%(columnsName.length + 1) === 0) {
+            // Cell is row name
+            cellClass = 'rowNameRect'
+          }
+          if (rowIndex === 0) {
+            // Cell is column name
+            cellClass = (i === 0)?'firstRect':'columnNameRect'
+            rowIndex = (i === columnsName.length  )?(rowIndex + 1):rowIndex
+          }
+          return cellClass
+        })
+        .attr('id', rect =>{
+          let rectIsAnInsideRect = (rect.rowName && rect.columnName)
+
+          if (rectIsAnInsideRect) return '' + rect.rowName + rect.columnName
+          else return;
+        })
+        .attr("x", function(rect) { return rect.x; })
+        .attr("y", function(rect) { return rect.y; })
+        .attr("width", function(rect) { return rect.width; })
+        .attr("height", function(rect) { return rect.height; })
+
+      // Adjust style of table
+      d3.selectAll('.rowNameRect')
+        .style('fill', '#49648c')
+        .style('stroke', "#ffffff")
+
+      d3.selectAll('.columnNameRect')
+        .style('fill', '#fff6de')
+        .style('stroke', "#49648c")
+
+      d3.selectAll('.insideTableRect')
+        .style('fill', 'transparent')
+        .style('stroke', "#ffffff")
+
+      d3.selectAll('.firstRect')
+        .style('opacity', '0')
+        .style('filter', 'alpha(opacity=0)')
+
+      // Append name of rows and columns
+      rowIndex = 0
+      cell.append('text')
+        .attr('x', cell => cell.x + cell.width/2)
+        .attr('y', cell => cell.y + cell.height/2)
+        .attr("dy", ".35em")
+        .attr('text-anchor', 'middle')
+        .style('font-weight', 'bold')
+        .text(cell => {
+          if (cell.hasOwnProperty('name')) {
+            return cell.name
+          }
+        })
+        .style('fill', (cell, indexCell) => {
+          let nameColor
+          if (indexCell%(columnsName.length + 1) === 0) {
+            // Cell is row name
+            nameColor = '#ffffff'
+          }
+
+          if (rowIndex === 0) {
+            // Cell is column name
+            nameColor = '#49648c'
+            rowIndex = (indexCell === columnsName.length  )?(rowIndex + 1):rowIndex
+          }
+          return nameColor
+        })
+    }
+
+    /* Calculate the maximum of elements that are in the same row
+     * Returns [a, b, c] where a: max elements in a cell of first row
+      * b: max elements in a cell of 2nd row ...*/
+    function maxElementsInRow (horizontalElementsData, rowsName, columnsName) {
       let matrixHorizEl = new Array(rowsName.length).fill().map(() => {
         return new Array(columnsName.length)
           .fill()
@@ -322,7 +336,7 @@
         })
       })
 
-      return Math.max(...matrixHorizEl.map(el => Math.max(...el)))
+      return matrixHorizEl.map(row => Math.max(...row))
     }
 
     /* Returns an array of elements data [dataVerticalElements, dataHorizontalElements, dataSingleElements]
@@ -485,7 +499,7 @@
     }
 
     /* Create an array of objects, each one of them contains all the data necessary to define an element visually  */
-    function createElementsPositionData (elementsData) {
+    function createElementsPositionData (elementsData, elementHeight) {
       let dataElements = []
       let smallMove = 0
 
@@ -512,16 +526,17 @@
 
         let widthElement = xEnd - xBeginning + cellWidth - 40
 
-        let heightElement = cellHeight / 3 - 10
+        let heightElement = elementHeight
 
         dataElements.push({
-          idealX: xBeginning + 10,
-          idealY: yBeginning + heightElement + 15,
+          idealX: xBeginning,
+          idealY: yBeginning,
           x: xBeginning,
-          y: yBeginning + smallMove,
+          y: yBeginning,
           size: [widthElement, heightElement],
           nameInsideElement: element.nameInsideElement,
           colorElement: (nameDimColorElements)?element[dimColorElements]:0.5,
+          rowName: element.rowName,
           yearsData: element.yearsData
         })
 
@@ -538,10 +553,10 @@
     /* Function to draw all elements on the graph
     * typeOfElement can be 'multi' for big rectangle elements or 'single' for unique cell elements
      * that will be drawn as circles */
-    function draw(elementsData) {
-      let dataElements = createElementsPositionData(elementsData)
+    function draw(elementsData, gridSelection, elementHeight) {
+      let dataElements = createElementsPositionData(elementsData, elementHeight)
 
-      let elementsSpace = grid.append('svg')
+      let elementsSpace = gridSelection.append('svg')
         .attr('class', 'superimposedElementsSpace')
 
       let dragRectangle = d3.drag()
@@ -591,7 +606,7 @@
           .attr('text-anchor', 'left')
           .attr('x', element => element.xBeginning)
           .attr('y', element => element.yBeginning)
-          .style('fill', '#000099')
+          .style('fill', '#49648c')
 
         let yearsData = dataElement.yearsData
         let tesst = Object.keys(yearsData)
@@ -605,7 +620,7 @@
             .attr('text-anchor', 'left')
             .attr('x', element => element.xBeginning + (year - firstYearOfData + 0.75) * element.size[0] / Object.keys(yearsData).length - yearsData[year].length)
             .attr('y', element => element.yBeginning + element.size[1] - 20)
-            .style('fill', '#000099')
+            .style('fill', '#49648c')
         }
       })
     }
@@ -628,19 +643,39 @@
       d3.select(this.parentNode).classed("active", false);
     }
 
-    /* Creates force simulation to avoid overlapping of elements
-     * and a force simulation to ensure each element is not out of a row or a column */
+    /* Changes y position of all elements in elementsData to avoid overlapping */
     function moveToRightPlace (elementsData) {
+      let elementsToPlaceInRow
+      // For each row, look for elements
+      rowsName.forEach(row => {
+        elementsToPlaceInRow = elementsData.filter(el => el.rowName === row)
+        let elementsToPlaceInCell
+        // heightsAlreadyUsed is an object which keys are the indexes of the years of the roadmap and which keys are
+        // arrays of already used heights for those years
+        let heightsAlreadyUsed = new Array(rowsName.length).fill().map(() => [])
 
-      let collisionForce = rectCollide().size(rectangle => [rectangle.size[0], rectangle.size[1] + 3]) // [width, height]
+        // For each column in a row check for elements
+        columnsName.forEach((column, indexCol) => {
+          elementsToPlaceInCell = elementsToPlaceInRow.filter(el => Object.keys(el.yearsData).indexOf(column) !== -1)
 
-      let simulation = d3.forceSimulation(elementsData)
-        .force("x", d3.forceX(function(element) { return element.idealX }))
-        .force("y", d3.forceY(function(element) { return element.idealY }))
-        .force("collision", collisionForce)
-        .stop()
+          let element1
+          for (let indexEl = 0; indexEl<elementsToPlaceInCell.length; indexEl++) {
+            element1 = elementsToPlaceInCell[indexEl]
 
-      for (let i = 0; i < 200 ; ++i) simulation.tick()
+            // while height is already used
+            while (heightsAlreadyUsed[indexCol].indexOf(element1.y) !== -1) {
+              element1.y += elementHeight + 3
+            }
+
+            for (let i=indexCol; i<indexCol + Object.keys(element1.yearsData).length; i++) {
+              // set the heights in each cell where element1 is as used heights
+              heightsAlreadyUsed[i].push(element1.y)
+            }
+
+            elementsToPlaceInRow.splice(elementsToPlaceInRow.indexOf(element1), 1) // Element has been placed
+          }
+        })
+      })
     }
 
     function rectCollide() {
