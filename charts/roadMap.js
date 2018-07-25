@@ -7,6 +7,10 @@
     .types(String, Number)
     .multiple(true)
 
+  let dimFirstColumn = model.dimension()
+    .title('Name First Column')
+    .types(String)
+
   let dimRowRaw = model.dimension()
     .title('Name Rows')
     .types(String)
@@ -23,12 +27,14 @@
   let nameDimensions = {}
 
   model.map(data => {
-    let yearsTable = dimYearsRaw()
+    let nameYearsArray = dimYearsRaw().map(year => parseInt(year).toString())
+    let unformattedNameYears = dimYearsRaw()
     return data.map((el, i) => {
+
       if (i === 0) {
         nameDimensions = {
           nameDimNameElements: dimNameElements()[0],
-          nameColumnsRaw: dimYearsRaw(),
+          nameColumnsRaw: nameYearsArray,
           nameDimRowRaw: dimRowRaw()[0],
           nameDimColorElements: (dimColorElements())?dimColorElements()[0]:false
         }
@@ -36,17 +42,18 @@
 
       let allYearsData = []
 
-      yearsTable.forEach((year, yearIndex) => {
-        let thereIsDataForThisYear = (el[year] !== '')
+      nameYearsArray.forEach((year, yearIndex) => {
+        let yearOldFormat = unformattedNameYears[yearIndex]
+        let thereIsDataForThisYear = (el[yearOldFormat] !== '')
 
         if (thereIsDataForThisYear) {
           allYearsData.push(
             {
               dimRow: el[dimRowRaw()],
-              dimColumn: dimYearsRaw()[yearIndex], // dimColumn is here the year dimension
+              dimColumn: year, // dimColumn is here the year dimension
               dimElementInside: el[dimNameElements()],
               dimColorElements: el[dimColorElements()],
-              dimYearData: el[year]
+              dimYearData: el[yearOldFormat]
             })
         }
       })
@@ -88,6 +95,15 @@
     spot_matrix_type : 'ring'
   }
 
+  /* Function that converts a string containing an int and strings to the int
+* Ex: 'Year 2020' would return 2020 */
+  function getIntFromString (stringWithInt) {
+    let arraySplit = stringWithInt.split(/([0-9]+)/)
+    arraySplit = arraySplit.filter(el => !isNaN(parseInt(el)))
+
+    return arraySplit[0]
+  }
+
   /* Drawing function */
   chart.draw(function(selection, data) {
     // data is the data structure resulting from the application of the model
@@ -121,7 +137,7 @@
 
     /* Retrieve data from dataset */
     // Create columns' and rows' name arrays
-    let columnsName = nameDimensions.nameColumnsRaw.sort((a, b) => parseInt(a) - parseInt(b))
+    let columnsName = nameDimensions.nameColumnsRaw.sort((a, b) => parseInt(a) - parseInt(b)).map(col => getIntFromString(col))
     let colNamesPlusEmpty = ['', ...columnsName]
     let rowsName = dataPerYear.map(el => el[dimRow]).filter((v, i, a) => a.indexOf(v) === i)
 
@@ -265,8 +281,7 @@
         })
         .attr('id', rect =>{
           let rectIsAnInsideRect = (rect.rowName && rect.columnName)
-          let idInsideRect = '' + rect.rowName + rect.columnName
-          idInsideRect = idInsideRect.replace(/\s+/g, '')
+          let idInsideRect = 'rect' + rowsName.indexOf(rect.rowName) + '' + columnsName.indexOf(rect.columnName)
 
           if (rectIsAnInsideRect) return idInsideRect
           else return;
@@ -508,16 +523,17 @@
       elementsData.forEach(element => {
 
         // Select the cell where the element should have his first extremity
-        let idCellBeginning = '#' + element.rowName + element.columnsName[0]
-        idCellBeginning = idCellBeginning.replace(/\s+/g, '')
+        let idCellBeginning = '#rect' + rowsName.indexOf(element.rowName)
+          + '' + columnsName.indexOf(element.columnsName[0])
 
-        let cellBeginningData = getSelectionCellData(idCellBeginning)
+        let cellBeginningData =
+          getSelectionCellData(idCellBeginning)
         let xBeginning = cellBeginningData.x
         let yBeginning = cellBeginningData.y
 
         // Select the cell where the element should have his end extremity
-        let idCellEnd = '#' + element.rowName + element.columnsName[element.columnsName.length - 1]
-        idCellEnd = idCellEnd.replace(/\s+/g, '')
+        let idCellEnd = '#rect' + rowsName.indexOf(element.rowName)
+          + '' + columnsName.indexOf(element.columnsName[element.columnsName.length - 1])
 
         let cellEndData = getSelectionCellData(idCellEnd)
         let xEnd = cellEndData.x
@@ -565,16 +581,18 @@
         .on("drag", rectangleDragged)
         .on("end", dragended)
 
-      dataElements.forEach(dataElement => {
+      dataElements.forEach((dataElement, indexElement) => {
         dataElement.xBeginning = dataElement.x + 10
         dataElement.yBeginning = dataElement.y + 10
 
-        let elementSelection = elementsSpace.selectAll('#' + dataElement.nameInsideElement)
+        let elementSelection = elementsSpace.selectAll('#elementNumber' + indexElement)
           .data([dataElement])
           .enter()
           .append('g')
           .attr('class', 'element')
-          .attr('id', element => element.nameInsideElement)
+          .attr('id', element => {
+            return 'elementNumber' + indexElement
+          })
 
         elementSelection.append('rect')
           .attr('x', element => element.x)
