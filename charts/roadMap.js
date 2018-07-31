@@ -142,7 +142,7 @@
       .attr("width", graphWidth + margin.left + margin.right + 2 + 'px')
       .attr("height", graphHeight + margin.bottom + margin.top + 'px')
       .style("margin-left", -margin.left + "px")
-      .style("margin.right", -margin.right + "px")
+      .style("margin-right", -margin.right + "px")
 
     let divGridGraph = selection.append('svg')
       .attr('class', 'gridGraph')
