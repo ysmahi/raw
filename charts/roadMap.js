@@ -25,6 +25,8 @@
 
   /* Map function */
   let nameDimensions = {}
+  let possibleFirstColumnValues = []
+  let alreadySeenFirstColumnsValues = []
 
   model.map(data => {
     let nameYearsArray = dimYearsRaw().map(year => parseInt(year).toString())
@@ -46,6 +48,7 @@
       nameYearsArray.forEach((year, yearIndex) => {
         let yearOldFormat = unformattedNameYears[yearIndex]
         let thereIsDataForThisYear = (el[yearOldFormat] !== '')
+        let firstColumnHasNotBeenSeen = (possibleFirstColumnValues.indexOf(el[dimFirstColumn()]) === -1)
 
         if (thereIsDataForThisYear) {
           allYearsData.push(
@@ -58,6 +61,8 @@
               dimYearData: el[yearOldFormat]
             })
         }
+
+        if (firstColumnHasNotBeenSeen) possibleFirstColumnValues.push(el[dimFirstColumn()])
       })
 
       return allYearsData
@@ -69,6 +74,11 @@
   chart.model(model)
   chart.title('Road Map')
     .description('Simple Road Map')
+
+  let wantedFirstColumn = chart.list()
+    .title('First Column')
+    .values(possibleFirstColumnValues)
+    .defaultValue(possibleFirstColumnValues[0])
 
   let rawWidth = chart.number()
     .title('Width')
@@ -114,7 +124,7 @@
 
     let dimFirstColumn = 'dimFirstColumn'
     let namesFirstColumnInstances = dataPerYear.map(el => el[dimFirstColumn]).filter((v, i, a) => a.indexOf(v) === i)
-    let nameWantedFirstColumn = namesFirstColumnInstances[0] // TODO : to change when other name selected
+    let nameWantedFirstColumn = wantedFirstColumn() // TODO : to change when other name selected
 
     // Filter the whole dataset to get only the elmeents of dataset which have the wanted first column
     dataPerYear = dataPerYear.filter(el => el[dimFirstColumn] === nameWantedFirstColumn)
@@ -684,7 +694,7 @@
             + ' L' + bottomArrowX + ' ' + bottomArrowY // Bottom point
             + ' Z' // Close path
           })
-          .style('fill', '#d8dfeb')
+          .style('fill', element => nameDimColorElements ? colors()(element.colorElement) : '#d8dfeb')
 
         elementSelection.append('text')
           .attr('dy', '.3em')
