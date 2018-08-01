@@ -7,6 +7,10 @@
     .types(String, Number)
     .multiple(true)
 
+  let dimFirstColumn = model.dimension()
+    .title('Name First Column')
+    .types(String)
+
   let dimRowRaw = model.dimension()
     .title('Name Rows')
     .types(String)
@@ -21,34 +25,44 @@
 
   /* Map function */
   let nameDimensions = {}
+  let possibleFirstColumnValues = []
+  let alreadySeenFirstColumnsValues = []
 
   model.map(data => {
-    let yearsTable = dimYearsRaw()
+    let nameYearsArray = dimYearsRaw().map(year => parseInt(year).toString())
+    let unformattedNameYears = dimYearsRaw()
     return data.map((el, i) => {
+
       if (i === 0) {
         nameDimensions = {
-          nameDimNameElements: dimNameElements()[0],
-          nameColumnsRaw: dimYearsRaw(),
-          nameDimRowRaw: dimRowRaw()[0],
+          nameDimNameElements: dimNameElements()[0], // ex: Projet
+          nameColumnsRaw: nameYearsArray, // ex: ['2016', '2017', '2018']
+          nameDimRowRaw: dimRowRaw()[0], // ex : Sous-domaine
+          nameDimFirstColumn: dimFirstColumn()[0], // ex : axe strat
           nameDimColorElements: (dimColorElements())?dimColorElements()[0]:false
         }
       }
 
       let allYearsData = []
 
-      yearsTable.forEach((year, yearIndex) => {
-        let thereIsDataForThisYear = (el[year] !== '')
+      nameYearsArray.forEach((year, yearIndex) => {
+        let yearOldFormat = unformattedNameYears[yearIndex]
+        let thereIsDataForThisYear = (el[yearOldFormat] !== '')
+        let firstColumnHasNotBeenSeen = (possibleFirstColumnValues.indexOf(el[dimFirstColumn()]) === -1)
 
         if (thereIsDataForThisYear) {
           allYearsData.push(
             {
+              dimFirstColumn: el[dimFirstColumn()],
               dimRow: el[dimRowRaw()],
-              dimColumn: dimYearsRaw()[yearIndex], // dimColumn is here the year dimension
+              dimColumn: year, // dimColumn is here the year dimension
               dimElementInside: el[dimNameElements()],
               dimColorElements: el[dimColorElements()],
-              dimYearData: el[year]
+              dimYearData: el[yearOldFormat]
             })
         }
+
+        if (firstColumnHasNotBeenSeen) possibleFirstColumnValues.push(el[dimFirstColumn()])
       })
 
       return allYearsData
@@ -60,6 +74,11 @@
   chart.model(model)
   chart.title('Road Map')
     .description('Simple Road Map')
+
+  let wantedFirstColumn = chart.list()
+    .title('First Column')
+    .values(possibleFirstColumnValues)
+    .defaultValue(possibleFirstColumnValues[0])
 
   let rawWidth = chart.number()
     .title('Width')
@@ -88,17 +107,36 @@
     spot_matrix_type : 'ring'
   }
 
+  /* Function that converts a string containing an int and strings to the int
+* Ex: 'Year 2020' would return 2020 */
+  function getIntFromString (stringWithInt) {
+    let arraySplit = stringWithInt.split(/([0-9]+)/)
+    arraySplit = arraySplit.filter(el => !isNaN(parseInt(el)))
+
+    return arraySplit[0]
+  }
+
   /* Drawing function */
   chart.draw(function(selection, data) {
     // data is the data structure resulting from the application of the model
+
     let dataPerYear = data.reduce((dataElement1, dataElement2) => dataElement1.concat(...dataElement2))
-    console.log('dataChart', dataPerYear)
+
+    let dimFirstColumn = 'dimFirstColumn'
+    let namesFirstColumnInstances = dataPerYear.map(el => el[dimFirstColumn]).filter((v, i, a) => a.indexOf(v) === i)
+    let nameWantedFirstColumn = wantedFirstColumn() // TODO : to change when other name selected
+
+    // Filter the whole dataset to get only the elmeents of dataset which have the wanted first column
+    dataPerYear = dataPerYear.filter(el => el[dimFirstColumn] === nameWantedFirstColumn)
+
+    console.log('dataChartPerYear', dataPerYear)
     let dimColumn = 'dimColumn'
     let dimRow = 'dimRow'
     let dimElementInside = 'dimElementInside'
     let dimColorElements = 'dimColorElements'
     let nameDimRowRaw = nameDimensions.nameDimRowRaw
     let dimYearData = 'dimYearData'
+    let nameDimFirstColumn = nameDimensions.nameDimFirstColumn
     let nameDimColorElements = nameDimensions.nameDimColorElements
     let color1 = {red: 0, green: 153, blue: 51}
     let color2 = {red: 204, green: 0, blue: 204}
@@ -114,22 +152,25 @@
       .attr("width", graphWidth + margin.left + margin.right + 2 + 'px')
       .attr("height", graphHeight + margin.bottom + margin.top + 'px')
       .style("margin-left", -margin.left + "px")
-      .style("margin.right", -margin.right + "px")
+      .style("margin-right", -margin.right + "px")
 
     let divGridGraph = selection.append('svg')
       .attr('class', 'gridGraph')
 
     /* Retrieve data from dataset */
     // Create columns' and rows' name arrays
-    let columnsName = nameDimensions.nameColumnsRaw.sort((a, b) => parseInt(a) - parseInt(b))
+    let columnsName = nameDimensions.nameColumnsRaw.sort((a, b) => parseInt(a) - parseInt(b)).map(col => getIntFromString(col))
     let colNamesPlusEmpty = ['', ...columnsName]
     let rowsName = dataPerYear.map(el => el[dimRow]).filter((v, i, a) => a.indexOf(v) === i)
+
+    let cellWidth = graphWidth / (columnsName.length + 2) // Because columnsName is only name of years
+    divGridGraph.attr('transform', 'translate(' + cellWidth + ', 0)')
 
     // Create dataset of elements that are on multiple dimensions
     let ElementInsideNames = dataPerYear.map(el => el[dimElementInside]).filter((v, i, a) => a.indexOf(v) === i)
 
     // Separation of vertical, horizontal and single elements
-    let separatedData = createMultiSingleData (dataPerYear, dimRow, dimColumn, dimElementInside)
+    let separatedData = createMultiSingleData (dataPerYear, dimRow, dimColumn, dimElementInside, nameWantedFirstColumn)
 
     let horizontalElementsData = separatedData[0]
     let singleElementsData = separatedData[1]
@@ -150,13 +191,15 @@
     /* Calculation of element height */
     // Calculation of max horizontal elements in the same cell
     let maxHorizontalElementsPerRow = maxElementsInRow(horizontalElementsData, rowsName, columnsName)
-    // let maxElementInCell = maxHorizontalElements
+    let maxElementsAllRows = maxHorizontalElementsPerRow.reduce((a, b) => a + b)
     console.log('maxHorizElements', maxHorizontalElementsPerRow)
 
-    let elementHeight = graphHeight / ((rowsName.length + 1) * Math.max(...maxHorizontalElementsPerRow))
+    let marginBetweenCells = 3
+    let elementHeight = (graphHeight - (marginBetweenCells * (rowsName.length - 1))) / ( maxElementsAllRows + 1/3 + 0.5*rowsName.length) // 1/3 is for the first row height
+    let firstRowHeight = elementHeight / 3
 
     // Create position data for grid
-    let gridData = createGridData(rowsName.length + 1, columnsName.length + 1, graphWidth / (columnsName.length + 1), maxHorizontalElementsPerRow, elementHeight)
+    let gridData = createGridData(rowsName.length + 1, columnsName.length + 1, cellWidth, maxHorizontalElementsPerRow, elementHeight, firstRowHeight, cellWidth)
     // Append names of row and columns in data
     gridData[0].forEach((col, indexCol) => col.name = colNamesPlusEmpty[indexCol]) // name columns
     for(let i=1; i<gridData.length; i++) { // name rows
@@ -177,6 +220,7 @@
 
     /* Creation of the underneath grid */
     drawGrid (divGridGraph, gridData)
+    drawFirstColumn (divGridGraph, nameWantedFirstColumn, 1 + firstRowHeight, graphHeight, cellWidth)
 
     /* Create superimposed svg elements */
     // Drawing of vertical elements and creating
@@ -185,7 +229,7 @@
 
     // function that creates a grid
     // http://www.cagrimmett.com/til/2016/08/17/d3-lets-make-a-grid.html
-    function createGridData (numberRow, numberColumn, cellWidth, arrayMaxElementPerRow, elementHeight) {
+    function createGridData (numberRow, numberColumn, cellWidth, arrayMaxElementPerRow, elementHeight, firstRowHeight, initialX) {
       let dataPos = [];
       let xpos = 1; //starting xpos and ypos at 1 so the stroke will show when we make the grid below
       let ypos = 1;
@@ -196,7 +240,7 @@
       for (let row = 0; row < numberRow; row++) {
         dataPos.push( [] );
         let RowIsFirstRow = (row === 0)
-        height = (row === 0)?elementHeight / 3:(arrayMaxElementPerRow[row - 1] + 0.5) * elementHeight
+        height = (row === 0)?firstRowHeight:(arrayMaxElementPerRow[row - 1] + 0.5) * elementHeight
 
         // iterate for cells/columns inside rows
         for (let column = 0; column < numberColumn; column++) {
@@ -213,7 +257,7 @@
         // reset the x position after a row is complete
         xpos = 1;
         // increment the y position for the next row. Move it down by height (height variable)
-        ypos += height + height / 30;
+        ypos += height + marginBetweenCells;
       }
       return dataPos;
     }
@@ -259,14 +303,13 @@
           if (rowIndex === 0) {
             // Cell is column name
             cellClass = (i === 0)?'firstRect':'columnNameRect'
-            rowIndex = (i === columnsName.length  )?(rowIndex + 1):rowIndex
+            rowIndex = (i === columnsName.length)?(rowIndex + 1):rowIndex
           }
           return cellClass
         })
         .attr('id', rect =>{
           let rectIsAnInsideRect = (rect.rowName && rect.columnName)
-          let idInsideRect = '' + rect.rowName + rect.columnName
-          idInsideRect = idInsideRect.replace(/\s+/g, '')
+          let idInsideRect = 'rect' + rowsName.indexOf(rect.rowName) + '' + columnsName.indexOf(rect.columnName)
 
           if (rectIsAnInsideRect) return idInsideRect
           else return;
@@ -320,6 +363,55 @@
           }
           return nameColor
         })
+        .style('font-family', 'Arial')
+        .style('font-size', '11px')
+    }
+
+    /* Function that draws first column */
+    function drawFirstColumn (parentSelection, nameFirstColumn, initialY, firstColumnHeight, firstColumnWidth) {
+      // Translate the rest of the table of the equivalent of 1 cell width in x
+      d3.select('#grid').attr('transform', 'translate(' + firstColumnWidth + ', 0)')
+
+      let firstColumn = parentSelection.append('g')
+        .attr('id', 'FirstColumn')
+
+      firstColumn.append('rect')
+        .attr('x', 1)
+        .attr('y', 1)
+        .attr('height', initialY)
+        .attr('width', firstColumnWidth)
+        .attr('id', 'cellNameFirstColumn')
+        .style('fill', '#ffffff')
+        .style('stroke', '#49648c')
+
+      firstColumn.append('text')
+        .text(nameDimFirstColumn)
+        .attr('x', 1 + firstColumnWidth / 2)
+        .attr('y', 1 + initialY / 2)
+        .attr('dy', '.3em')
+        .attr('text-anchor', 'middle')
+        .style('fill', '#49648c')
+        .style('font-family', 'Arial')
+        .style('font-size', '11px')
+
+      firstColumn.append('rect')
+        .attr('x', 1)
+        .attr('y', initialY + marginBetweenCells)
+        .attr('height', 1 + firstColumnHeight - initialY)
+        .attr('width', firstColumnWidth)
+        .attr('id', 'RectFirstColumn')
+        .style('fill', '#374b69')
+
+      firstColumn.append('text')
+        .text(nameWantedFirstColumn)
+        .attr('x', 1 + firstColumnWidth / 2)
+        .attr('y', initialY + marginBetweenCells + firstColumnHeight / 2)
+        .attr('dy', '.3em')
+        .attr('text-anchor', 'middle')
+        .style('fill', '#ffffff')
+        .style('font-weight', 'bold')
+        .style('font-family', 'Arial')
+        .style('font-size', '11px')
     }
 
     /* Calculate the maximum of elements that are in the same row
@@ -345,7 +437,7 @@
     * dataElements : array of objects defining the position of elements
      * Ex : [{"AppName": "App1", "Branch": "Finance", "CompanyBrand": "Brand1" }]
      * with "Branch" being the column's name and "CompanyBrand" the row's one */
-    function createMultiSingleData (dataElements, nameDimRow, nameDimColumn, nameDimElementInside) {
+    function createMultiSingleData (dataElements, nameDimRow, nameDimColumn, nameDimElementInside, nameFirstColumn) {
       // Create array of elements that are in multiple cell or column
       let namesDataMultiple = dataElements.map(el => el[nameDimElementInside])
         .filter((v, i, a) => !(a.indexOf(v) === i))
@@ -508,16 +600,17 @@
       elementsData.forEach(element => {
 
         // Select the cell where the element should have his first extremity
-        let idCellBeginning = '#' + element.rowName + element.columnsName[0]
-        idCellBeginning = idCellBeginning.replace(/\s+/g, '')
+        let idCellBeginning = '#rect' + rowsName.indexOf(element.rowName)
+          + '' + columnsName.indexOf(element.columnsName[0])
 
-        let cellBeginningData = getSelectionCellData(idCellBeginning)
+        let cellBeginningData =
+          getSelectionCellData(idCellBeginning)
         let xBeginning = cellBeginningData.x
         let yBeginning = cellBeginningData.y
 
         // Select the cell where the element should have his end extremity
-        let idCellEnd = '#' + element.rowName + element.columnsName[element.columnsName.length - 1]
-        idCellEnd = idCellEnd.replace(/\s+/g, '')
+        let idCellEnd = '#rect' + rowsName.indexOf(element.rowName)
+          + '' + columnsName.indexOf(element.columnsName[element.columnsName.length - 1])
 
         let cellEndData = getSelectionCellData(idCellEnd)
         let xEnd = cellEndData.x
@@ -565,16 +658,18 @@
         .on("drag", rectangleDragged)
         .on("end", dragended)
 
-      dataElements.forEach(dataElement => {
+      dataElements.forEach((dataElement, indexElement) => {
         dataElement.xBeginning = dataElement.x + 10
         dataElement.yBeginning = dataElement.y + 10
 
-        let elementSelection = elementsSpace.selectAll('#' + dataElement.nameInsideElement)
+        let elementSelection = elementsSpace.selectAll('#elementNumber' + indexElement)
           .data([dataElement])
           .enter()
           .append('g')
           .attr('class', 'element')
-          .attr('id', element => element.nameInsideElement)
+          .attr('id', element => {
+            return 'elementNumber' + indexElement
+          })
 
         elementSelection.append('rect')
           .attr('x', element => element.x)
@@ -599,7 +694,7 @@
             + ' L' + bottomArrowX + ' ' + bottomArrowY // Bottom point
             + ' Z' // Close path
           })
-          .style('fill', '#d8dfeb')
+          .style('fill', element => nameDimColorElements ? colors()(element.colorElement) : '#d8dfeb')
 
         elementSelection.append('text')
           .attr('dy', '.3em')
@@ -608,6 +703,8 @@
           .attr('x', element => element.xBeginning)
           .attr('y', element => element.yBeginning)
           .style('fill', '#49648c')
+          .style('font-family', 'Arial')
+          .style('font-size', '10px')
 
         let yearsData = dataElement.yearsData
         let tesst = Object.keys(yearsData)
@@ -622,6 +719,8 @@
             .attr('x', element => element.xBeginning + (year - firstYearOfData + 0.75) * element.size[0] / Object.keys(yearsData).length - yearsData[year].length)
             .attr('y', element => element.yBeginning + element.size[1] - 20)
             .style('fill', '#49648c')
+            .style('font-family', 'Arial')
+            .style('font-size', '10px')
         }
       })
     }
