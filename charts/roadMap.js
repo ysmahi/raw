@@ -633,7 +633,8 @@
           idealY: yBeginning + 3,
           x: xBeginning,
           y: yBeginning + 3,
-          size: [widthElement, heightElement],
+          width: widthElement,
+          height: heightElement,
           nameInsideElement: element.nameInsideElement,
           colorElement: (nameDimColorElements)?element[dimColorElements]:0.5,
           rowName: element.rowName,
@@ -680,8 +681,8 @@
         elementSelection.append('rect')
           .attr('x', element => element.x)
           .attr('y', element => element.y)
-          .attr('width', element => element.size[0])
-          .attr('height', element => element.size[1])
+          .attr('width', element => element.width)
+          .attr('height', element => element.height)
           .style('fill', element => nameDimColorElements ? colors()(element.colorElement) : '#d8dfeb')
           .attr('class', element => element.nameInsideElement)
           .style('stroke', 'transparent')
@@ -689,12 +690,12 @@
 
         elementSelection.append('path')
           .attr('d',element => {
-            let topArrowX = element.x + element.size[0]
+            let topArrowX = element.x + element.width
             let topArrowY = element.y
-            let middleArrowX = element.x + element.size[0] + 30
-            let middleArrowY = element.y + element.size[1] / 2
-            let bottomArrowX = element.x + element.size[0]
-            let bottomArrowY = element.y + element.size[1]
+            let middleArrowX = element.x + element.width + 30
+            let middleArrowY = element.y + element.height / 2
+            let bottomArrowX = element.x + element.width
+            let bottomArrowY = element.y + element.height
             return 'M' + topArrowX + ' ' + topArrowY //Upper point of arrow
             + ' L' + middleArrowX + ' ' + middleArrowY // Front point of arrow
             + ' L' + bottomArrowX + ' ' + bottomArrowY // Bottom point
@@ -712,6 +713,7 @@
           .style('font-family', 'Arial')
           .style('font-size', '10px')
           .attr('class', 'nameElement')
+          .call(wrap)
 
         let yearsData = dataElement.yearsData
         let tesst = Object.keys(yearsData)
@@ -720,23 +722,29 @@
 
         // TODO : revoir le placement des montants pour le rendre modifiable
 
+        let allAdditionalTexts = elementSelection.append('text')
+          .attr('dy', '.3em')
+          .attr('text-anchor', 'left')
+          .attr('x', element => element.xBeginning + 0.65 * element.width / Object.keys(yearsData).length)
+          .attr('y', element => element.yBeginning + element.height - 20)
+          .style('fill', '#49648c')
+          .style('font-family', 'Arial')
+          .style('font-size', '10px')
+
         for (let year = firstYearOfData; year < firstYearOfData + Object.keys(yearsData).length; year++) {
-          elementSelection.append('text')
-            .attr('dy', '.3em')
+          allAdditionalTexts.append('tspan')
+            .attr('x', element => element.xBeginning + 0.65 * element.width / Object.keys(yearsData).length)
+            .attr('y', element => element.yBeginning + element.height - 20)
+            .attr('dx', element => (year - firstYearOfData) * element.width / Object.keys(yearsData).length)
             .text((parseInt(yearsData[year]))?yearsData[year] + ' M€':yearsData[year])
-            .attr('text-anchor', 'left')
-            .attr('x', element => element.xBeginning + (year - firstYearOfData + 0.75) * element.size[0] / Object.keys(yearsData).length - yearsData[year].length)
-            .attr('y', element => element.yBeginning + element.size[1] - 20)
-            .style('fill', '#49648c')
-            .style('font-family', 'Arial')
-            .style('font-size', '10px')
             .attr('class', 'additionalText')
+
         }
       })
     }
 
     function dragstarted(d) {
-      d3.select(this.parentNode).raise().classed("active", true);
+      d3.select(this.parentNode).raise().classed("active", true)
     }
 
     function rectangleDragged (d) {
@@ -744,18 +752,22 @@
         .attr("x", d.x = d3.event.x)
         .attr("y", d.y = d3.event.y)
 
-      d3.select(this.parentNode).select('.nameElement')
+      d3.select(this.parentNode).selectAll('.nameElementText')
         .attr("x", d3.event.x + 10)
         .attr("y", d3.event.y + 10)
 
+      d3.select(this.parentNode).selectAll('.additionalText')
+        .attr("x", el => d3.event.x + 10 + 0.65 * el.width / Object.keys(el.yearsData).length)
+        .attr("y", el => d3.event.y + 10 + el.height - 20)
+
       d3.select(this.parentNode).select('path')
         .attr('d',element => {
-          let topArrowX = d3.event.x + element.size[0]
+          let topArrowX = d3.event.x + element.width
           let topArrowY = d3.event.y
-          let middleArrowX = d3.event.x + element.size[0] + 30
-          let middleArrowY = d3.event.y + element.size[1] / 2
-          let bottomArrowX = d3.event.x + element.size[0]
-          let bottomArrowY = d3.event.y + element.size[1]
+          let middleArrowX = d3.event.x + element.width + 30
+          let middleArrowY = d3.event.y + element.height / 2
+          let bottomArrowX = d3.event.x + element.width
+          let bottomArrowY = d3.event.y + element.height
           return 'M' + topArrowX + ' ' + topArrowY //Upper point of arrow
             + ' L' + middleArrowX + ' ' + middleArrowY // Front point of arrow
             + ' L' + bottomArrowX + ' ' + bottomArrowY // Bottom point
@@ -764,7 +776,7 @@
     }
 
     function dragended(d) {
-      d3.select(this.parentNode).classed("active", false);
+      d3.select(this.parentNode).classed("active", false)
     }
 
     /* Changes y position of all elements in elementsData to avoid overlapping */
@@ -830,8 +842,8 @@
 
         function apply(quad, x0, y0, x1, y1) {
           let data = quad.data
-          let xSize = (size[0] + quad.size[0]) / 2
-          let ySize = (size[1] + quad.size[1]) / 2
+          let xSize = (width + quad.width) / 2
+          let ySize = (height + quad.height) / 2
           if (data) {
             if (data.index <= node.index) { return }
 
@@ -866,8 +878,8 @@
             let i = -1
             while (++i < 4) {
               if (quad[i] && quad[i].size) {
-                quad.size[0] = Math.max(quad.size[0], quad[i].size[0])
-                quad.size[1] = Math.max(quad.size[1], quad[i].size[1])
+                quad.width = Math.max(quad.width, quad[i].width)
+                quad.height = Math.max(quad.height, quad[i].height)
               }
             }
           }
@@ -913,10 +925,10 @@
           size = sizes[i]
           xi = node.x + node.vx
           x0 = bounds[0][0] - xi
-          x1 = bounds[1][0] - (xi + size[0])
+          x1 = bounds[1][0] - (xi + width)
           yi = node.y + node.vy
           y0 = bounds[0][1] - yi
-          y1 = bounds[1][1] - (yi + size[1])
+          y1 = bounds[1][1] - (yi + height)
           if (x0 > 0 || x1 < 0) {
             node.x += node.vx
             node.vx = -node.vx
@@ -966,6 +978,34 @@
         Math.round(color1.green * w1 + color2.green * w2),
         Math.round(color1.blue * w1 + color2.blue * w2)];
       return 'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')';
+    }
+
+    function wrap(text) {
+      text.each(function() {
+        let parentNode = d3.select(this.parentNode).select('rect')
+        let text = d3.select(this),
+          words = text.text().split(/\s+/).reverse(),
+          word,
+          line = [],
+          lineNumber = 0,
+          lineHeight = 1.1, // ems
+          y = text.attr("y"),
+          x = text.attr('x'),
+          dy = parseFloat(text.attr("dy")),
+          tspan = text.text(null).append("tspan").attr("x", x).attr("y", y).attr("dy", dy + "em")
+            .attr('class', 'nameElementText')
+        while (word = words.pop()) {
+          line.push(word);
+          tspan.text(line.join(" "));
+          if (tspan.node().getComputedTextLength() > parentNode.attr('width') - 3) {
+            line.pop();
+            tspan.text(line.join(" "));
+            line = [word];
+            tspan = text.append("tspan").attr("x", x).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word)
+              .attr('class', 'nameElementText')
+          }
+        }
+      });
     }
   })
 })();
