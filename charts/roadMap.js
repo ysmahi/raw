@@ -38,7 +38,7 @@
           nameDimNameElements: dimNameElements()[0], // ex: Projet
           nameColumnsRaw: nameYearsArray, // ex: ['2016', '2017', '2018']
           nameDimRowRaw: dimRowRaw()[0], // ex : Sous-domaine
-          nameDimFirstColumn: dimFirstColumn()[0], // ex : axe strat
+          nameDimFirstColumn: (dimFirstColumn())?dimFirstColumn()[0]:false, // ex : axe strat
           nameDimColorElements: (dimColorElements())?dimColorElements()[0]:false
         }
       }
@@ -79,6 +79,10 @@
     .title('First Column')
     .values(possibleFirstColumnValues)
     .defaultValue(possibleFirstColumnValues[0])
+
+  let displayFirstColumn = chart.checkbox()
+    .title("Display First Column")
+    .defaultValue(true)
 
   let rawWidth = chart.number()
     .title('Width')
@@ -124,7 +128,8 @@
 
     let dimFirstColumn = 'dimFirstColumn'
     let namesFirstColumnInstances = dataPerYear.map(el => el[dimFirstColumn]).filter((v, i, a) => a.indexOf(v) === i)
-    let nameWantedFirstColumn = wantedFirstColumn() // TODO : to change when other name selected
+    let nameWantedFirstColumn = wantedFirstColumn()
+    let isDisplayedFirstColumn = displayFirstColumn()
 
     // Filter the whole dataset to get only the elmeents of dataset which have the wanted first column
     dataPerYear = dataPerYear.filter(el => el[dimFirstColumn] === nameWantedFirstColumn)
@@ -160,10 +165,11 @@
     /* Retrieve data from dataset */
     // Create columns' and rows' name arrays
     let columnsName = nameDimensions.nameColumnsRaw.sort((a, b) => parseInt(a) - parseInt(b)).map(col => getIntFromString(col))
-    let colNamesPlusEmpty = ['', ...columnsName]
+    let colNamesPlusEmpty = [nameDimRowRaw, ...columnsName]
     let rowsName = dataPerYear.map(el => el[dimRow]).filter((v, i, a) => a.indexOf(v) === i)
 
-    let cellWidth = graphWidth / (columnsName.length + 2) // Because columnsName is only name of years
+    let cellWidth = (isDisplayedFirstColumn)?graphWidth / (columnsName.length + 2):graphWidth / (columnsName.length + 1)
+    // Because columnsName is only name of years
     divGridGraph.attr('transform', 'translate(' + cellWidth + ', 0)')
 
     // Create dataset of elements that are on multiple dimensions
@@ -220,7 +226,7 @@
 
     /* Creation of the underneath grid */
     drawGrid (divGridGraph, gridData)
-    drawFirstColumn (divGridGraph, nameWantedFirstColumn, 1 + firstRowHeight, graphHeight, cellWidth)
+    if (isDisplayedFirstColumn) drawFirstColumn (divGridGraph, nameWantedFirstColumn, 1 + firstRowHeight, graphHeight, cellWidth)
 
     /* Create superimposed svg elements */
     // Drawing of vertical elements and creating
@@ -302,7 +308,7 @@
           }
           if (rowIndex === 0) {
             // Cell is column name
-            cellClass = (i === 0)?'firstRect':'columnNameRect'
+            cellClass = 'columnNameRect'
             rowIndex = (i === columnsName.length)?(rowIndex + 1):rowIndex
           }
           return cellClass
@@ -344,7 +350,7 @@
         .attr("dy", ".35em")
         .attr('text-anchor', 'middle')
         .style('font-weight', 'bold')
-        .text(cell => {
+        .text((cell, indexCell) => {
           if (cell.hasOwnProperty('name')) {
             return cell.name
           }
@@ -378,7 +384,7 @@
       firstColumn.append('rect')
         .attr('x', 1)
         .attr('y', 1)
-        .attr('height', initialY)
+        .attr('height', initialY - 1)
         .attr('width', firstColumnWidth)
         .attr('id', 'cellNameFirstColumn')
         .style('fill', '#ffffff')
@@ -705,11 +711,14 @@
           .style('fill', '#49648c')
           .style('font-family', 'Arial')
           .style('font-size', '10px')
+          .attr('class', 'nameElement')
 
         let yearsData = dataElement.yearsData
         let tesst = Object.keys(yearsData)
           tesst.sort((a, b) => parseInt(a) - parseInt(b))
         let firstYearOfData = parseInt(Object.keys(yearsData)[0])
+
+        // TODO : revoir le placement des montants pour le rendre modifiable
 
         for (let year = firstYearOfData; year < firstYearOfData + Object.keys(yearsData).length; year++) {
           elementSelection.append('text')
@@ -721,6 +730,7 @@
             .style('fill', '#49648c')
             .style('font-family', 'Arial')
             .style('font-size', '10px')
+            .attr('class', 'additionalText')
         }
       })
     }
@@ -734,9 +744,23 @@
         .attr("x", d.x = d3.event.x)
         .attr("y", d.y = d3.event.y)
 
-      d3.select(this.parentNode).select('text')
-        .attr("x", d.xBeginning = d3.event.x + 10)
-        .attr("y", d.yBeginning = d3.event.y + 10)
+      d3.select(this.parentNode).select('.nameElement')
+        .attr("x", d3.event.x + 10)
+        .attr("y", d3.event.y + 10)
+
+      d3.select(this.parentNode).select('path')
+        .attr('d',element => {
+          let topArrowX = d3.event.x + element.size[0]
+          let topArrowY = d3.event.y
+          let middleArrowX = d3.event.x + element.size[0] + 30
+          let middleArrowY = d3.event.y + element.size[1] / 2
+          let bottomArrowX = d3.event.x + element.size[0]
+          let bottomArrowY = d3.event.y + element.size[1]
+          return 'M' + topArrowX + ' ' + topArrowY //Upper point of arrow
+            + ' L' + middleArrowX + ' ' + middleArrowY // Front point of arrow
+            + ' L' + bottomArrowX + ' ' + bottomArrowY // Bottom point
+            + ' Z' // Close path
+        })
     }
 
     function dragended(d) {

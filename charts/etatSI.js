@@ -84,7 +84,7 @@
     let dimColorElements = 'dimColorElements'
     let nameDimRowRaw = nameDimensions.nameDimRowsRaw
     let nameDimColorElements = nameDimensions.nameDimColorElements
-    let columnsColors = ['#c0cff7', '#4170e7', '#00b0f0']
+    let colorsPallet = ['#c0cff7', '#4170e7', '#00b0f0']
     let onlySingleElements = (elementsDisposalManner() === 'Eléments courts')
 
 
@@ -106,6 +106,10 @@
     let columnsName = data.map(el => el[dimColumn]).filter((v, i, a) => a.indexOf(v) === i)
     let colNamesPlusEmpty = data.map(el => el[dimColumn]).filter((v, i, a) => a.indexOf(v) === i)
     colNamesPlusEmpty.unshift('')
+    let columnsColors = []
+    for (let col = 0; col < columnsName.length; col++) {
+      columnsColors.push(colorsPallet[col % colorsPallet.length])
+    }
     let rowsName = data.map(el => el[dimRow]).filter((v, i, a) => a.indexOf(v) === i)
 
     // Create dataset of elements that are on multiple dimensions
