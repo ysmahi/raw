@@ -6,18 +6,22 @@
     .title('Years data')
     .types(String, Number)
     .multiple(true)
+    .required(1)
 
   let dimFirstColumn = model.dimension()
     .title('Name First Column')
     .types(String)
+    .required(1)
 
   let dimRowRaw = model.dimension()
     .title('Name Rows')
     .types(String)
+    .required(1)
 
   let dimNameElements = model.dimension()
     .title('Name of Elements')
     .types(String)
+    .required(1)
 
   let dimColorElements = model.dimension()
     .title('Color of Elements')
@@ -27,11 +31,13 @@
   let nameDimensions = {}
   let possibleFirstColumnValues = []
   let alreadySeenFirstColumnsValues = []
+  let currentFirstColumnName
+  let wantedFirstColumnDefined = false
 
-  model.map(data => {
+  model.map((data, index) => {
     let nameYearsArray = dimYearsRaw().map(year => parseInt(year).toString())
     let unformattedNameYears = dimYearsRaw()
-    return data.map((el, i) => {
+    let mapFunction = data.map((el, i) => {
 
       if (i === 0) {
         nameDimensions = {
@@ -41,6 +47,8 @@
           nameDimFirstColumn: (dimFirstColumn())?dimFirstColumn()[0]:false, // ex : axe strat
           nameDimColorElements: (dimColorElements())?dimColorElements()[0]:false
         }
+
+        wantedFirstColumnDefined = (dimFirstColumn()[0] === currentFirstColumnName)
       }
 
       let allYearsData = []
@@ -62,11 +70,28 @@
             })
         }
 
-        if (firstColumnHasNotBeenSeen) possibleFirstColumnValues.push(el[dimFirstColumn()])
+        if (firstColumnHasNotBeenSeen && !wantedFirstColumnDefined) possibleFirstColumnValues.push(el[dimFirstColumn()])
       })
+
+      if (i === data.length - 1 && nameDimensions.nameDimFirstColumn) {
+      }
 
       return allYearsData
     })
+
+    /* Define here chart options that have to be define dynamically
+         * ie. that require data contained in initial dataset */
+    if (!wantedFirstColumnDefined) {
+      wantedFirstColumn
+        .title(dimFirstColumn()[0])
+        .values(possibleFirstColumnValues)
+        .defaultValue(possibleFirstColumnValues[0])
+
+      possibleFirstColumnValues = []
+      currentFirstColumnName = dimFirstColumn()[0]
+    }
+
+    return mapFunction
   })
 
   /* Definition of chart options */
@@ -74,11 +99,6 @@
   chart.model(model)
   chart.title('Road Map')
     .description('Simple Road Map')
-
-  let wantedFirstColumn = chart.list()
-    .title('First Column')
-    .values(possibleFirstColumnValues)
-    .defaultValue(possibleFirstColumnValues[0])
 
   let displayFirstColumn = chart.checkbox()
     .title("Display First Column")
@@ -98,6 +118,8 @@
 
   let colors  = chart.color()
     .title('Color scale')
+
+  let wantedFirstColumn = chart.list()
 
   let chartOptions = {
     spot_radius : 30,
@@ -371,6 +393,7 @@
         })
         .style('font-family', 'Arial')
         .style('font-size', '11px')
+        .call(wrap, cellWidth)
     }
 
     /* Function that draws first column */
@@ -399,6 +422,7 @@
         .style('fill', '#49648c')
         .style('font-family', 'Arial')
         .style('font-size', '11px')
+        .call(wrap, cellWidth)
 
       firstColumn.append('rect')
         .attr('x', 1)
@@ -418,6 +442,7 @@
         .style('font-weight', 'bold')
         .style('font-family', 'Arial')
         .style('font-size', '11px')
+        .call(wrap, cellWidth)
     }
 
     /* Calculate the maximum of elements that are in the same row
@@ -980,10 +1005,11 @@
       return 'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')';
     }
 
-    function wrap(text) {
+    function wrap(text, width) {
       text.each(function() {
         let parentNode = d3.select(this.parentNode).select('rect')
         let text = d3.select(this),
+          maxWidth = width ? width : parentNode.attr('width') - 3,
           words = text.text().split(/\s+/).reverse(),
           word,
           line = [],
