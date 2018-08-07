@@ -30,7 +30,6 @@
   /* Map function */
   let nameDimensions = {}
   let possibleFirstColumnValues = []
-  let alreadySeenFirstColumnsValues = []
   let currentFirstColumnName
   let wantedFirstColumnDefined = false
 
@@ -56,7 +55,7 @@
       nameYearsArray.forEach((year, yearIndex) => {
         let yearOldFormat = unformattedNameYears[yearIndex]
         let thereIsDataForThisYear = (el[yearOldFormat] !== '')
-        let firstColumnHasNotBeenSeen = (possibleFirstColumnValues.indexOf(el[dimFirstColumn()]) === -1)
+        let firstColumnHasNotBeenSeenAlready = (possibleFirstColumnValues.indexOf(el[dimFirstColumn()]) === -1)
 
         if (thereIsDataForThisYear) {
           allYearsData.push(
@@ -70,7 +69,7 @@
             })
         }
 
-        if (firstColumnHasNotBeenSeen && !wantedFirstColumnDefined) possibleFirstColumnValues.push(el[dimFirstColumn()])
+        if (firstColumnHasNotBeenSeenAlready && !wantedFirstColumnDefined) possibleFirstColumnValues.push(el[dimFirstColumn()])
       })
 
       if (i === data.length - 1 && nameDimensions.nameDimFirstColumn) {

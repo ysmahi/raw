@@ -23,9 +23,16 @@
 
   /* Map function */
   let nameDimensions = {}
+  let checkboxesColumnsDefined = false
+  let currentDimColumnName
+  let checkboxesColumnsName = [] // array containing the titles of the checkboxes, which are columns' name
+  let checkboxesColumns = [] // array containing the instances of checkboxes
+  let allColumns = []
 
   model.map(data => {
-    return data.map((el, i) => {
+    let columnsNameAlreadyDefined = false
+
+    let mapFunction =  data.map((el, i) => {
 
       if (i === 0) {
         nameDimensions = {
@@ -34,15 +41,55 @@
           nameDimRowsRaw: dimRowsRaw()[0], // ex: Réseau
           nameDimColorElements: (dimColorElements())?dimColorElements()[0]:false
         }
+
+        checkboxesColumnsDefined = (dimColumnsRaw()[0] === currentDimColumnName)
       }
 
-      return {
+      let elementData = {
         dimRow: el[dimRowsRaw()],
         dimColumn: el[dimColumnsRaw()],
         dimElementInside: el[dimNameElements()],
         dimColorElements: el[dimColorElements()]
       }
+
+      let columnHasNotBeenSeenAlready = checkboxesColumnsName.indexOf(el[dimColumnsRaw()]) === -1
+
+      if (columnHasNotBeenSeenAlready && !checkboxesColumnsDefined) checkboxesColumnsName.push(el[dimColumnsRaw()])
+
+      return elementData
     })
+
+    if (!checkboxesColumnsDefined) {
+      let diff = checkboxesColumns.length - checkboxesColumnsName.length
+
+      for (let indexCol = 0; indexCol < checkboxesColumnsName.length; indexCol++) {
+        let checkboxAlreadyCreated = (!!checkboxesColumns[indexCol])
+
+        if (checkboxAlreadyCreated) {
+          checkboxesColumns[indexCol]
+            .title(checkboxesColumnsName[indexCol])
+            .defaultValue(true)
+        }
+
+        else {
+          checkboxesColumns[indexCol] = chart.checkbox()
+            .title(checkboxesColumnsName[indexCol])
+            .defaultValue(true)
+        }
+      }
+
+      for (let indexCol = checkboxesColumns.length - diff; indexCol < checkboxesColumns.length; indexCol++) {
+          checkboxesColumns [indexCol].title('No title')
+            .defaultValue(true)
+      }
+
+      allColumns = checkboxesColumnsName
+
+      checkboxesColumnsName = []
+      currentDimColumnName = dimColumnsRaw()[0]
+    }
+
+    return mapFunction
   })
 
   /* Definition of chart options */
@@ -80,7 +127,7 @@
   }
 
   /* Drawing function */
-  chart.draw(function(selection, data) {
+  chart.draw(function(selection, dataRaw) {
     let dimColumn = 'dimColumn'
     let dimRow = 'dimRow'
     let dimElementInside = 'dimElementInside'
@@ -89,10 +136,16 @@
     let nameDimColorElements = nameDimensions.nameDimColorElements
     let colorsPallet = ['#c0cff7', '#4170e7', '#00b0f0']
     let directionElements = (elementsDisposalManner() === 'Eléments courts')
+    let checkboxesColumnsValues = checkboxesColumns.map(checkbox => checkbox())
+    let columnsName = allColumns.filter((col, indexColumn) => checkboxesColumnsValues[indexColumn])
+
+    let data = dataRaw.filter(el => {
+      let elHasAWantedColumn = columnsName.indexOf(el[dimColumn]) !== -1
+      if (elHasAWantedColumn) return el
+    })
 
     // Create color domain
     colors.domain(data, el => el[dimColorElements])
-
 
     let margin = {top: 5, right: 5, bottom: 5, left: 5},
       graphWidth =  +rawWidth() - 5,
@@ -109,9 +162,7 @@
 
     /* Retrieve data from dataset */
     // Create columns' and rows' name arrays
-    let columnsName = data.map(el => el[dimColumn]).filter((v, i, a) => a.indexOf(v) === i)
-    let colNamesPlusEmpty = data.map(el => el[dimColumn]).filter((v, i, a) => a.indexOf(v) === i)
-    colNamesPlusEmpty.unshift('')
+    let colNamesPlusEmpty = ['', ...columnsName]
     let columnsColors = []
     for (let col = 0; col < columnsName.length; col++) {
       columnsColors.push(colorsPallet[col % colorsPallet.length])
