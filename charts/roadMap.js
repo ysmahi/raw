@@ -55,13 +55,18 @@
       nameYearsArray.forEach((year, yearIndex) => {
         let yearOldFormat = unformattedNameYears[yearIndex]
         let thereIsDataForThisYear = (el[yearOldFormat] !== '')
-        let firstColumnHasNotBeenSeenAlready = (possibleFirstColumnValues.indexOf(el[dimFirstColumn()]) === -1)
+        let firstColumnIsUndefined = (el[dimFirstColumn()] === '')
+        let rowIsUndefined = (el[dimRowRaw()] === '')
+        let elementFirstColumn = firstColumnIsUndefined ?
+            nameDimensions.nameDimFirstColumn + ' indéfini':
+          el[dimFirstColumn()]
+        let firstColumnHasNotBeenSeenAlready = (possibleFirstColumnValues.indexOf(elementFirstColumn) === -1)
 
         if (thereIsDataForThisYear) {
           allYearsData.push(
             {
-              dimFirstColumn: el[dimFirstColumn()],
-              dimRow: el[dimRowRaw()],
+              dimFirstColumn: elementFirstColumn,
+              dimRow: rowIsUndefined ? nameDimensions.nameDimRowRaw + ' indéfini':el[dimRowRaw()],
               dimColumn: year, // dimColumn is here the year dimension
               dimElementInside: el[dimNameElements()],
               dimColorElements: el[dimColorElements()],
@@ -69,7 +74,9 @@
             })
         }
 
-        if (firstColumnHasNotBeenSeenAlready && !wantedFirstColumnDefined) possibleFirstColumnValues.push(el[dimFirstColumn()])
+        if (firstColumnHasNotBeenSeenAlready && !wantedFirstColumnDefined) {
+          possibleFirstColumnValues.push(elementFirstColumn)
+        }
       })
 
       if (i === data.length - 1 && nameDimensions.nameDimFirstColumn) {
@@ -152,9 +159,6 @@
     let nameWantedFirstColumn = wantedFirstColumn()
     let isDisplayedFirstColumn = displayFirstColumn()
 
-    // Filter the whole dataset to get only the elmeents of dataset which have the wanted first column
-    dataPerYear = dataPerYear.filter(el => el[dimFirstColumn] === nameWantedFirstColumn)
-
     console.log('dataChartPerYear', dataPerYear)
     let dimColumn = 'dimColumn'
     let dimRow = 'dimRow'
@@ -166,6 +170,9 @@
     let nameDimColorElements = nameDimensions.nameDimColorElements
     let color1 = {red: 0, green: 153, blue: 51}
     let color2 = {red: 204, green: 0, blue: 204}
+
+    // Filter the whole dataset to get only the elements of dataset which have the wanted first column
+    dataPerYear = dataPerYear.filter(el => el[dimFirstColumn] === nameWantedFirstColumn)
 
     // Create color domain
     colors.domain(dataPerYear, el => el[dimColorElements])
@@ -527,6 +534,7 @@
                   dataElement[nameDimColumn] = cs[0]
                   dataElement[nameDimRow] = rowName
                   dataElement[dimColorElements] = colorElement
+                  dataElement[dimYearData] = yearsData[cs[0]]
                   singleElementsData.push(dataElement)
                 }
                 cs = [nameUniqueCols[l]]
@@ -535,6 +543,7 @@
                   dataElement[nameDimElementInside] = nameInsideElement
                   dataElement[nameDimColumn] = cs[0]
                   dataElement[nameDimRow] = rowName
+                  dataElement[dimYearData] = yearsData[cs[0]]
                   dataElement[dimColorElements] = colorElement
                   singleElementsData.push(dataElement)
                 }
@@ -572,6 +581,7 @@
                   dataElement[nameDimElementInside] = nameInsideElement
                   dataElement[nameDimColumn] = nameCol
                   dataElement[nameDimRow] = rs[0]
+                  dataElement[dimYearData] = yearsData[nameCol]
                   dataElement[dimColorElements] = colorElement
 
                   // Check if element already in singleElementsData
@@ -585,6 +595,7 @@
                     dataElement[nameDimElementInside] = nameInsideElement
                     dataElement[nameDimColumn] = nameCol
                     dataElement[nameDimRow] = rs[0]
+                    dataElement[dimYearData] = yearsData[nameCol]
                     dataElement[dimColorElements] = colorElement
 
                     // Check if element already in singleElementsData
@@ -606,6 +617,7 @@
               dataElement[nameDimElementInside] = nameInsideElement
               dataElement[nameDimColumn] = nameCol
               dataElement[nameDimRow] = r[0]
+              dataElement[dimYearData] = yearsData[nameCol]
               dataElement[dimColorElements] = colorElement
               singleElementsData.push(dataElement)
             }
@@ -743,8 +755,6 @@
         let tesst = Object.keys(yearsData)
           tesst.sort((a, b) => parseInt(a) - parseInt(b))
         let firstYearOfData = parseInt(Object.keys(yearsData)[0])
-
-        // TODO : revoir le placement des montants pour le rendre modifiable
 
         let allAdditionalTexts = elementSelection.append('text')
           .attr('dy', '.3em')
