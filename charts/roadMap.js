@@ -34,14 +34,14 @@
   let wantedFirstColumnDefined = false
 
   model.map((data, index) => {
-    let nameYearsArray = dimYearsRaw().map(year => parseInt(year).toString())
+    let nameYearsArray = dimYearsRaw()
     let unformattedNameYears = dimYearsRaw()
     let mapFunction = data.map((el, i) => {
 
       if (i === 0) {
         nameDimensions = {
           nameDimNameElements: dimNameElements()[0], // ex: Projet
-          nameColumnsRaw: nameYearsArray, // ex: ['2016', '2017', '2018']
+          nameColumnsRaw: nameYearsArray, // ex: ['2016', '2017', '2018', '>2018']
           nameDimRowRaw: dimRowRaw()[0], // ex : Sous-domaine
           nameDimFirstColumn: (dimFirstColumn())?dimFirstColumn()[0]:false, // ex : axe strat
           nameDimColorElements: (dimColorElements())?dimColorElements()[0]:false
@@ -192,7 +192,7 @@
 
     /* Retrieve data from dataset */
     // Create columns' and rows' name arrays
-    let columnsName = nameDimensions.nameColumnsRaw.sort((a, b) => parseInt(a) - parseInt(b)).map(col => getIntFromString(col))
+    let columnsName = nameDimensions.nameColumnsRaw
     let colNamesPlusEmpty = [nameDimRowRaw, ...columnsName]
     let rowsName = dataPerYear.map(el => el[dimRow]).filter((v, i, a) => a.indexOf(v) === i)
     let coefWidthFirstColumns = 0.75
@@ -766,9 +766,6 @@
           .call(wrap)
 
         let yearsData = dataElement.yearsData
-        let tesst = Object.keys(yearsData)
-          tesst.sort((a, b) => parseInt(a) - parseInt(b))
-        let firstYearOfData = parseInt(Object.keys(yearsData)[0])
 
         let allAdditionalTexts = elementSelection.append('text')
           .attr('dy', '.3em')
@@ -779,15 +776,15 @@
           .style('font-family', 'Arial')
           .style('font-size', '10px')
 
-        for (let year = firstYearOfData; year < firstYearOfData + Object.keys(yearsData).length; year++) {
+        Object.keys(yearsData).forEach((nameColumn, indexColumn) => {
+          // nameColumn is usually year but could be '>2022' or 'Next 5 years' for example
           allAdditionalTexts.append('tspan')
             .attr('x', element => element.xBeginning + 0.65 * element.width / Object.keys(yearsData).length)
             .attr('y', element => element.yBeginning + element.height - 20)
-            .attr('dx', element => (year - firstYearOfData) * element.width / Object.keys(yearsData).length)
-            .text((parseInt(yearsData[year]))?yearsData[year] + ' M€':yearsData[year])
+            .attr('dx', element => indexColumn * element.width / Object.keys(yearsData).length)
+            .text((parseInt(yearsData[nameColumn]))?yearsData[nameColumn] + ' M€':yearsData[nameColumn])
             .attr('class', 'additionalText')
-
-        }
+        })
       })
     }
 
