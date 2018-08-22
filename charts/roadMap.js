@@ -177,7 +177,7 @@
     // Create color domain
     colors.domain(dataPerYear, el => el[dimColorElements])
 
-    let margin = {top: 30, right: 0, bottom: 20, left: 0},
+    let margin = {top: 10, right: 0, bottom: 10, left: 0},
       graphWidth =  +rawWidth() - 25,
       graphHeight = +rawHeight() - margin.top - margin.bottom
 
@@ -195,8 +195,12 @@
     let columnsName = nameDimensions.nameColumnsRaw.sort((a, b) => parseInt(a) - parseInt(b)).map(col => getIntFromString(col))
     let colNamesPlusEmpty = [nameDimRowRaw, ...columnsName]
     let rowsName = dataPerYear.map(el => el[dimRow]).filter((v, i, a) => a.indexOf(v) === i)
+    let coefWidthFirstColumns = 0.75
 
-    let cellWidth = (isDisplayedFirstColumn)?graphWidth / (columnsName.length + 2):graphWidth / (columnsName.length + 1)
+    let cellWidth = (isDisplayedFirstColumn)
+      ? graphWidth / (2 * coefWidthFirstColumns + columnsName.length)
+      : graphWidth / (1 * coefWidthFirstColumns + columnsName.length)
+    let firstColsCellsWidth = coefWidthFirstColumns * cellWidth
     // Because columnsName is only name of years
     divGridGraph.attr('transform', 'translate(' + cellWidth + ', 0)')
 
@@ -225,15 +229,20 @@
     /* Calculation of element height */
     // Calculation of max horizontal elements in the same cell
     let maxHorizontalElementsPerRow = maxElementsInRow(horizontalElementsData, rowsName, columnsName)
-    let maxElementsAllRows = maxHorizontalElementsPerRow.reduce((a, b) => a + b)
+    let maxElementsAllRows = maxHorizontalElementsPerRow.reduce((a, b) => {
+      return a + b
+    })
     console.log('maxHorizElements', maxHorizontalElementsPerRow)
 
-    let marginBetweenCells = 3
-    let elementHeight = (graphHeight - (marginBetweenCells * (rowsName.length - 1))) / ( maxElementsAllRows + 1/3 + 0.5*rowsName.length) // 1/3 is for the first row height
-    let firstRowHeight = elementHeight / 3
+    let marginBetweenRows = 4
+    let marginBetweenElements = 2
+    let strokeCorrection = 0.5
+    let firstRowHeight = 30
+    let numberMarginsBetweenElements = maxElementsAllRows - rowsName.length
+    let elementHeight = (graphHeight - (firstRowHeight + (rowsName.length) * (marginBetweenRows + 2 * strokeCorrection) + numberMarginsBetweenElements * marginBetweenElements)) / maxElementsAllRows
 
     // Create position data for grid
-    let gridData = createGridData(rowsName.length + 1, columnsName.length + 1, cellWidth, maxHorizontalElementsPerRow, elementHeight, firstRowHeight, cellWidth)
+    let gridData = createGridData(rowsName.length + 1, columnsName.length + 1, cellWidth, maxHorizontalElementsPerRow, elementHeight, firstRowHeight, firstColsCellsWidth)
     // Append names of row and columns in data
     gridData[0].forEach((col, indexCol) => col.name = colNamesPlusEmpty[indexCol]) // name columns
     for(let i=1; i<gridData.length; i++) { // name rows
@@ -254,7 +263,7 @@
 
     /* Creation of the underneath grid */
     drawGrid (divGridGraph, gridData)
-    if (isDisplayedFirstColumn) drawFirstColumn (divGridGraph, nameWantedFirstColumn, 1 + firstRowHeight, graphHeight, cellWidth)
+    if (isDisplayedFirstColumn) drawFirstColumn (divGridGraph, nameWantedFirstColumn, 1 + firstRowHeight, graphHeight, firstColsCellsWidth)
 
     /* Create superimposed svg elements */
     // Drawing of vertical elements and creating
@@ -263,7 +272,7 @@
 
     // function that creates a grid
     // http://www.cagrimmett.com/til/2016/08/17/d3-lets-make-a-grid.html
-    function createGridData (numberRow, numberColumn, cellWidth, arrayMaxElementPerRow, elementHeight, firstRowHeight, initialX) {
+    function createGridData (numberRow, numberColumn, cellWidth, arrayMaxElementPerRow, elementHeight, firstRowHeight, firstColumnWidth) {
       let dataPos = [];
       let xpos = 1; //starting xpos and ypos at 1 so the stroke will show when we make the grid below
       let ypos = 1;
@@ -274,24 +283,26 @@
       for (let row = 0; row < numberRow; row++) {
         dataPos.push( [] );
         let RowIsFirstRow = (row === 0)
-        height = (row === 0)?firstRowHeight:(arrayMaxElementPerRow[row - 1] + 0.5) * elementHeight
+        height = (row === 0)?firstRowHeight: arrayMaxElementPerRow[row - 1] * (elementHeight + marginBetweenElements) + 2 * strokeCorrection - marginBetweenElements
 
         // iterate for cells/columns inside rows
         for (let column = 0; column < numberColumn; column++) {
+          let firstColumn = (column === 0)
+          let widthCell = firstColumn ? firstColumnWidth : width
 
           dataPos[row].push({
             x: xpos,
             y: ypos,
-            width: width,
+            width: widthCell,
             height: height
           })
           // increment the x position. i.e. move it over by width (width variable)
-          xpos += width;
+          xpos += widthCell;
         }
         // reset the x position after a row is complete
         xpos = 1;
         // increment the y position for the next row. Move it down by height (height variable)
-        ypos += height + marginBetweenCells;
+        ypos += height + marginBetweenRows;
       }
       return dataPos;
     }
@@ -359,7 +370,10 @@
         .style('stroke', "#ffffff")
 
       d3.selectAll('.columnNameRect')
-        .style('fill', '#fff6de')
+        .style('fill', (rect, indexRect) => {
+          if (indexRect === 0) return '#ffffff'
+          else return '#fff6de'
+        })
         .style('stroke', "#49648c")
 
       d3.selectAll('.insideTableRect')
@@ -428,20 +442,22 @@
         .style('fill', '#49648c')
         .style('font-family', 'Arial')
         .style('font-size', '11px')
+        .style('font-weight', 'bold')
         .call(wrap, cellWidth)
 
       firstColumn.append('rect')
         .attr('x', 1)
-        .attr('y', initialY + marginBetweenCells)
-        .attr('height', 1 + firstColumnHeight - initialY)
+        .attr('y', initialY + marginBetweenRows)
+        .attr('height', graphHeight - marginBetweenRows - firstRowHeight)
         .attr('width', firstColumnWidth)
         .attr('id', 'RectFirstColumn')
         .style('fill', '#374b69')
+        .style('stroke', '#fff')
 
       firstColumn.append('text')
         .text(nameWantedFirstColumn)
         .attr('x', 1 + firstColumnWidth / 2)
-        .attr('y', initialY + marginBetweenCells + firstColumnHeight / 2)
+        .attr('y', initialY + marginBetweenRows + firstColumnHeight / 2)
         .attr('dy', '.3em')
         .attr('text-anchor', 'middle')
         .style('fill', '#ffffff')
@@ -495,7 +511,7 @@
             colorElement = (nameDimColorElements)?el[dimColorElements]:0.5
           })
 
-        uniqueRowsName = rows.filter((v, i, a) => a.indexOf(v) === i)
+        let uniqueRowsName = rows.filter((v, i, a) => a.indexOf(v) === i)
           .sort((a, b) => {
             return rowsName.indexOf(a) - rowsName.indexOf(b)
           })
@@ -665,10 +681,8 @@
         let heightElement = elementHeight
 
         dataElements.push({
-          idealX: xBeginning,
-          idealY: yBeginning + 3,
-          x: xBeginning,
-          y: yBeginning + 3,
+          x: xBeginning + strokeCorrection,
+          y: yBeginning + strokeCorrection,
           width: widthElement,
           height: heightElement,
           nameInsideElement: element.nameInsideElement,
@@ -834,7 +848,7 @@
 
             // while height is already used
             while (heightsAlreadyUsed[indexCol].indexOf(element1.y) !== -1) {
-              element1.y += elementHeight + 3
+              element1.y += elementHeight + marginBetweenElements
             }
 
             for (let i=indexCol; i<indexCol + Object.keys(element1.yearsData).length; i++) {
@@ -846,157 +860,6 @@
           }
         })
       })
-    }
-
-    function rectCollide() {
-      let nodes, sizes, masses
-      let size = constant([0, 0])
-      let strength = 1
-      let iterations = 1
-
-      function force() {
-        let node, size, mass, xi, yi
-        let i = -1
-        while (++i < iterations) { iterate() }
-
-        function iterate() {
-          let j = -1
-          let tree = d3.quadtree(nodes, xCenter, yCenter).visitAfter(prepare)
-
-          while (++j < nodes.length) {
-            node = nodes[j]
-            size = sizes[j]
-            mass = masses[j]
-            xi = xCenter(node)
-            yi = yCenter(node)
-
-            tree.visit(apply)
-          }
-        }
-
-        function apply(quad, x0, y0, x1, y1) {
-          let data = quad.data
-          let xSize = (width + quad.width) / 2
-          let ySize = (height + quad.height) / 2
-          if (data) {
-            if (data.index <= node.index) { return }
-
-            let x = xi - xCenter(data)
-            let y = yi - yCenter(data)
-            let xd = Math.abs(x) - xSize
-            let yd = Math.abs(y) - ySize
-
-            if (xd < 0 && yd < 0) {
-              let l = Math.sqrt(x * x + y * y)
-              let m = masses[data.index] / (mass + masses[data.index])
-
-              if (Math.abs(xd) < Math.abs(yd)) {
-                node.vx -= (x *= xd / l * strength) * m
-                data.vx += x * (1 - m)
-              } else {
-                node.vy -= (y *= yd / l * strength) * m
-                data.vy += y * (1 - m)
-              }
-            }
-          }
-
-          return x0 > xi + xSize || y0 > yi + ySize ||
-            x1 < xi - xSize || y1 < yi - ySize
-        }
-
-        function prepare(quad) {
-          if (quad.data) {
-            quad.size = sizes[quad.data.index]
-          } else {
-            quad.size = [0, 0]
-            let i = -1
-            while (++i < 4) {
-              if (quad[i] && quad[i].size) {
-                quad.width = Math.max(quad.width, quad[i].width)
-                quad.height = Math.max(quad.height, quad[i].height)
-              }
-            }
-          }
-        }
-      }
-
-      function xCenter(d) { return d.x + d.vx + sizes[d.index][0] / 2 }
-      function yCenter(d) { return d.y + d.vy + sizes[d.index][1] / 2 }
-
-      force.initialize = function (_) {
-        sizes = (nodes = _).map(size)
-        masses = sizes.map(function (d) { return d[0] * d[1] })
-      }
-
-      force.size = function (_) {
-        return (arguments.length
-          ? (size = typeof _ === 'function' ? _ : constant(_), force)
-          : size)
-      }
-
-      force.strength = function (_) {
-        return (arguments.length ? (strength = +_, force) : strength)
-      }
-
-      force.iterations = function (_) {
-        return (arguments.length ? (iterations = +_, force) : iterations)
-      }
-
-      return force
-    }
-
-    function boundedBox() {
-      let nodes, sizes
-      let bounds
-      let size = constant([0, 0])
-
-      function force() {
-        let node, size
-        let xi, x0, x1, yi, y0, y1
-        let i = -1
-        while (++i < nodes.length) {
-          node = nodes[i]
-          size = sizes[i]
-          xi = node.x + node.vx
-          x0 = bounds[0][0] - xi
-          x1 = bounds[1][0] - (xi + width)
-          yi = node.y + node.vy
-          y0 = bounds[0][1] - yi
-          y1 = bounds[1][1] - (yi + height)
-          if (x0 > 0 || x1 < 0) {
-            node.x += node.vx
-            node.vx = -node.vx
-            if (node.vx < x0) { node.x += x0 - node.vx }
-            if (node.vx > x1) { node.x += x1 - node.vx }
-          }
-          if (y0 > 0 || y1 < 0) {
-            node.y += node.vy
-            node.vy = -node.vy
-            if (node.vy < y0) { node.vy += y0 - node.vy }
-            if (node.vy > y1) { node.vy += y1 - node.vy }
-          }
-        }
-      }
-
-      force.initialize = function (_) {
-        sizes = (nodes = _).map(size)
-      }
-
-      force.bounds = function (_) {
-        return (arguments.length ? (bounds = _, force) : bounds)
-      }
-
-      force.size = function (_) {
-        return (arguments.length
-          ? (size = typeof _ === 'function' ? _ : constant(_), force)
-          : size)
-      }
-
-      return force
-    }
-
-    function constant(_) {
-      return function () { return _ }
     }
 
     /* Function that returns the selection cell bounded data (contains x, y, width, height) */

@@ -95,6 +95,11 @@ angular.module('raw.controllers', [])
       }
     };
 
+    // Refresh the chart
+    $scope.refreshChart = () => {
+      $scope.uploadFile($scope.files);
+
+    }
 
     function parseData(json){
 

@@ -850,7 +850,7 @@
         lineNumber = 0,
         lineHeight = 1.1, // ems
         y = text.attr("y"),
-        x = text.attr('x')
+        x = text.attr('x'),
         dy = parseFloat(text.attr("dy")),
         tspan = text.text(null).append("tspan").attr("x", x).attr("y", y).attr("dy", dy + "em");
       while (word = words.pop()) {
