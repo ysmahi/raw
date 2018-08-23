@@ -204,6 +204,12 @@
     // Because columnsName is only name of years
     divGridGraph.attr('transform', 'translate(' + cellWidth + ', 0)')
 
+    /* Calculation of totals per row and per first column */
+    let totalsPerRow = getTotalsPerRow ()
+    let totalsPerColumn = getTotalsPerColumn()
+    console.log('totals per row', totalsPerRow)
+    console.log('totals per column', totalsPerColumn)
+
     // Create dataset of elements that are on multiple dimensions
     let ElementInsideNames = dataPerYear.map(el => el[dimElementInside]).filter((v, i, a) => a.indexOf(v) === i)
 
@@ -248,6 +254,7 @@
     for(let i=1; i<gridData.length; i++) { // name rows
       let currentRow = gridData[i]
       currentRow[0].name = rowsName[i - 1]
+      currentRow[0].total = totalsPerRow[i - 1]
     }
 
     for(let i=1; i<rowsName.length + 1; i++) {
@@ -388,7 +395,7 @@
       rowIndex = 0
       cell.append('text')
         .attr('x', cell => cell.x + cell.width/2)
-        .attr('y', cell => cell.y + cell.height/2)
+        .attr('y', cell => cell.y + 2 * cell.height / 5)
         .attr("dy", ".35em")
         .attr('text-anchor', 'middle')
         .style('font-weight', 'bold')
@@ -414,6 +421,23 @@
         .style('font-family', 'Arial')
         .style('font-size', '11px')
         .call(wrap, cellWidth)
+
+      // Append totals
+      d3.selectAll('.rowNameRect')
+        .each(function (row, indexRow) {
+          d3.select(this.parentNode)
+          // append totals per row
+          .append('text')
+          .text(totalsPerRow[indexRow])
+          .attr('x', cell => cell.x + cell.width/2)
+          .attr('y', cell => cell.y + 2 * cell.height / 5 + 20)
+          .attr("dy", ".35em")
+          .attr('text-anchor', 'middle')
+          .style('font-weight', 'bold')
+          .style('font-family', 'Arial')
+          .style('font-size', '11px')
+            .style('fill', '#ffffff')
+        })
     }
 
     /* Function that draws first column */
@@ -454,10 +478,13 @@
         .style('fill', '#374b69')
         .style('stroke', '#fff')
 
+      let yNameColumn = initialY + marginBetweenRows + 2 * firstColumnHeight / 5
+
+      // Append name first column
       firstColumn.append('text')
         .text(nameWantedFirstColumn)
         .attr('x', 1 + firstColumnWidth / 2)
-        .attr('y', initialY + marginBetweenRows + firstColumnHeight / 2)
+        .attr('y', yNameColumn)
         .attr('dy', '.3em')
         .attr('text-anchor', 'middle')
         .style('fill', '#ffffff')
@@ -465,6 +492,32 @@
         .style('font-family', 'Arial')
         .style('font-size', '11px')
         .call(wrap, cellWidth)
+
+      // Append totals
+      for (let year = 0; year < columnsName.length; year++) {
+        firstColumn.append('text')
+          .text(columnsName[year] + ': ' + totalsPerColumn[year])
+          .attr('x', 1 + 1/5 * firstColumnWidth)
+          .attr('y', yNameColumn + 20 + 11 * year)
+          .attr('dy', '.3em')
+          .attr('text-anchor', 'right')
+          .style('fill', '#ffffff')
+          .style('font-weight', 'bold')
+          .style('font-family', 'Arial')
+          .style('font-size', '11px')
+      }
+
+      // Append big total
+      firstColumn.append('text')
+        .text('Total: ' + totalsPerColumn[columnsName.length])
+        .attr('x', 1 + 1/5 * firstColumnWidth)
+        .attr('y', yNameColumn + 3 * 20 + 11 * columnsName.length)
+        .attr('dy', '.3em')
+        .attr('text-anchor', 'right')
+        .style('fill', '#ffffff')
+        .style('font-weight', 'bold')
+        .style('font-family', 'Arial')
+        .style('font-size', '11px')
     }
 
     /* Calculate the maximum of elements that are in the same row
@@ -484,6 +537,52 @@
       })
 
       return matrixHorizEl.map(row => Math.max(...row))
+    }
+
+    /* Returns an array of total budget ordered by row name, each total is a string */
+    function getTotalsPerRow ()  {
+      let totals = new Array(rowsName.length).fill().map(el => 0)
+      let bigTotal = 0
+          for (let indexElement = 0; indexElement < dataPerYear.length; indexElement++) {
+            let rowOfElement = dataPerYear[indexElement].dimRow
+            let indexOfRow = rowsName.indexOf(rowOfElement)
+            let budgetElement = parseFloat(dataPerYear[indexElement].dimYearData) + 1000 ? parseFloat(dataPerYear[indexElement].dimYearData) : 0
+
+        totals[indexOfRow] += budgetElement
+        bigTotal += budgetElement
+      }
+
+      totals[totals.length] = bigTotal
+
+      totals = totals.map(total => {
+        if (total === 0) return 'A chiffrer'
+        else return Number(Number(total).toFixed(2)).toLocaleString() + ' M€'
+      })
+
+      return totals
+    }
+
+    /* Returns an array of total budget ordered by column (usually year) name, each total is a string */
+    function getTotalsPerColumn ()  {
+      let totals = new Array(columnsName.length).fill().map(el => 0)
+      let bigTotal = 0
+          for (let indexElement = 0; indexElement < dataPerYear.length; indexElement++) {
+            let columnOfElement = dataPerYear[indexElement].dimColumn
+            let indexOfColumn = columnsName.indexOf(columnOfElement)
+            let budgetElement = parseFloat(dataPerYear[indexElement].dimYearData) + 1000 ? parseFloat(dataPerYear[indexElement].dimYearData) : 0
+
+        totals[indexOfColumn] += budgetElement
+        bigTotal += budgetElement
+      }
+
+      totals[totals.length] = bigTotal
+
+      totals = totals.map(total => {
+        if (total === 0) return 'A chiffrer'
+        else return Number(Number(total).toFixed(2)).toLocaleString() + ' M€'
+      })
+
+      return totals
     }
 
     /* Returns an array of elements data [dataVerticalElements, dataHorizontalElements, dataSingleElements]
@@ -782,7 +881,7 @@
             .attr('x', element => element.xBeginning + 0.65 * element.width / Object.keys(yearsData).length)
             .attr('y', element => element.yBeginning + element.height - 20)
             .attr('dx', element => indexColumn * element.width / Object.keys(yearsData).length)
-            .text((parseInt(yearsData[nameColumn]))?yearsData[nameColumn] + ' M€':yearsData[nameColumn])
+            .text((parseInt(yearsData[nameColumn]) + 1000)?parseFloat(yearsData[nameColumn]).toLocaleString("latn") + ' M€':yearsData[nameColumn])
             .attr('class', 'additionalText')
         })
       })
