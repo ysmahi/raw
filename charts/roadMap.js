@@ -250,10 +250,10 @@
     // Create position data for grid
     let gridData = createGridData(rowsName.length + 1, columnsName.length + 1, cellWidth, maxHorizontalElementsPerRow, elementHeight, firstRowHeight, firstColsCellsWidth)
     // Append names of row and columns in data
-    gridData[0].forEach((col, indexCol) => col.name = colNamesPlusEmpty[indexCol]) // name columns
+    gridData[0].forEach((col, indexCol) => col.titleColumn = colNamesPlusEmpty[indexCol]) // name columns
     for(let i=1; i<gridData.length; i++) { // name rows
       let currentRow = gridData[i]
-      currentRow[0].name = rowsName[i - 1]
+      currentRow[0].titleRow = rowsName[i - 1]
       currentRow[0].total = totalsPerRow[i - 1]
     }
 
@@ -395,13 +395,21 @@
       rowIndex = 0
       cell.append('text')
         .attr('x', cell => cell.x + cell.width/2)
-        .attr('y', cell => cell.y + 2 * cell.height / 5)
+        .attr('y', cell => {
+          let cellIsRowTitle = cell.hasOwnProperty('titleRow')
+          let cellIsColumnTitle = cell.hasOwnProperty('titleColumn')
+          if (cellIsRowTitle) return cell.y + 2 * cell.height / 5
+          else if (cellIsColumnTitle) return cell.y + cell.height / 2
+        })
         .attr("dy", ".35em")
         .attr('text-anchor', 'middle')
         .style('font-weight', 'bold')
-        .text((cell, indexCell) => {
-          if (cell.hasOwnProperty('name')) {
-            return cell.name
+        .text(cell => {
+          if (cell.hasOwnProperty('titleRow')) {
+            return cell.titleRow
+          }
+          else if (cell.hasOwnProperty('titleColumn')) {
+            return cell.titleColumn
           }
         })
         .style('fill', (cell, indexCell) => {
@@ -421,6 +429,28 @@
         .style('font-family', 'Arial')
         .style('font-size', '11px')
         .call(wrap, cellWidth)
+
+      // Draw lines that separate columns
+      let separatingLine = grid.append('g')
+        .attr('class', 'separatingLineG')
+        .selectAll('separatingLine')
+        .data(gridData[0])
+        .enter()
+        .append('path')
+        .attr('d',(column, indexCell) => {
+          let columnIsNamesColumn = (indexCell === 0 || indexCell === 1)
+          if (!columnIsNamesColumn) {
+            let topLineX = column.x // 0.7 is to make disappear white line between rect and arrow
+            let topLineY = column.y + firstRowHeight
+            let bottomLineX = topLineX
+            let bottomArrowY = column.y + graphHeight
+            return 'M' + topLineX + ' ' + topLineY //Upper point of line
+              + ' L' + bottomLineX + ' ' + bottomArrowY // Bottom point of line
+              + ' Z' // Close path
+          }
+        })
+        .style('stroke', "#49648c")
+        .style('stroke-dasharray', "0.2%, 0.3%")
 
       // Append totals
       d3.selectAll('.rowNameRect')
@@ -496,7 +526,7 @@
       // Append totals
       for (let year = 0; year < columnsName.length; year++) {
         firstColumn.append('text')
-          .text(columnsName[year] + ': ' + totalsPerColumn[year])
+          .text(columnsName[year] + ' : ' + totalsPerColumn[year])
           .attr('x', 1 + 1/5 * firstColumnWidth)
           .attr('y', yNameColumn + 20 + 11 * year)
           .attr('dy', '.3em')
@@ -509,7 +539,7 @@
 
       // Append big total
       firstColumn.append('text')
-        .text('Total: ' + totalsPerColumn[columnsName.length])
+        .text('Total : ' + totalsPerColumn[columnsName.length])
         .attr('x', 1 + 1/5 * firstColumnWidth)
         .attr('y', yNameColumn + 3 * 20 + 11 * columnsName.length)
         .attr('dy', '.3em')
@@ -775,7 +805,7 @@
         let cellWidth = cellEndData.width
         let cellHeight = cellEndData.height
 
-        let widthElement = xEnd - xBeginning + cellWidth - 40
+        let widthElement = xEnd - xBeginning + cellWidth - 20
 
         let heightElement = elementHeight
 
@@ -839,13 +869,13 @@
 
         elementSelection.append('path')
           .attr('d',element => {
-            let topArrowX = element.x + element.width
+            let topArrowX = element.x + element.width - 0.7 // 0.7 is to make disappear white line between rect and arrow
             let topArrowY = element.y
-            let middleArrowX = element.x + element.width + 30
+            let middleArrowX = element.x + element.width + 15
             let middleArrowY = element.y + element.height / 2
-            let bottomArrowX = element.x + element.width
+            let bottomArrowX = topArrowX
             let bottomArrowY = element.y + element.height
-            return 'M' + topArrowX + ' ' + topArrowY //Upper point of arrow
+            return 'M' + topArrowX  + ' ' + topArrowY //Upper point of arrow
             + ' L' + middleArrowX + ' ' + middleArrowY // Front point of arrow
             + ' L' + bottomArrowX + ' ' + bottomArrowY // Bottom point
             + ' Z' // Close path
@@ -869,7 +899,7 @@
         let allAdditionalTexts = elementSelection.append('text')
           .attr('dy', '.3em')
           .attr('text-anchor', 'left')
-          .attr('x', element => element.xBeginning + 0.65 * element.width / Object.keys(yearsData).length)
+          .attr('x', element => element.xBeginning + 0.6 * cellWidth)
           .attr('y', element => element.yBeginning + element.height - 20)
           .style('fill', '#49648c')
           .style('font-family', 'Arial')
@@ -878,9 +908,9 @@
         Object.keys(yearsData).forEach((nameColumn, indexColumn) => {
           // nameColumn is usually year but could be '>2022' or 'Next 5 years' for example
           allAdditionalTexts.append('tspan')
-            .attr('x', element => element.xBeginning + 0.65 * element.width / Object.keys(yearsData).length)
+            .attr('x', element => element.xBeginning + 0.6 * cellWidth)
             .attr('y', element => element.yBeginning + element.height - 20)
-            .attr('dx', element => indexColumn * element.width / Object.keys(yearsData).length)
+            .attr('dx', element => indexColumn * cellWidth)
             .text((parseInt(yearsData[nameColumn]) + 1000)?parseFloat(yearsData[nameColumn]).toLocaleString("latn") + ' M€':yearsData[nameColumn])
             .attr('class', 'additionalText')
         })
@@ -901,7 +931,7 @@
         .attr("y", d3.event.y + 10)
 
       d3.select(this.parentNode).selectAll('.additionalText')
-        .attr("x", el => d3.event.x + 10 + 0.65 * el.width / Object.keys(el.yearsData).length)
+        .attr("x", el => d3.event.x + 10 + 0.6 * cellWidth)
         .attr("y", el => d3.event.y + 10 + el.height - 20)
 
       d3.select(this.parentNode).select('path')
